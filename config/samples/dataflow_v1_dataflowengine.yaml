@@ -1,0 +1,6 @@
+apiVersion: dataflow.pingcap.com/v1
+kind: DataflowEngine
+metadata:
+  name: dataflowengine-sample
+spec:
+  # TODO(user): Add fields here
