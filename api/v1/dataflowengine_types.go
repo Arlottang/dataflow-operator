@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,8 +29,13 @@ type DataflowEngineSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of DataflowEngine. Edit dataflowengine_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	//FrameStandalone FrameStandaloneSpec `json:"frameStandalone"`
+
+	Name string `json:"name"`
+
+	Image string `json:"image,omitempty"`
+
+	Ports int32 `json:"ports"`
 }
 
 // DataflowEngineStatus defines the observed state of DataflowEngine
@@ -48,6 +54,14 @@ type DataflowEngine struct {
 
 	Spec   DataflowEngineSpec   `json:"spec,omitempty"`
 	Status DataflowEngineStatus `json:"status,omitempty"`
+}
+
+func (in *DataflowEngine) String() string {
+	return fmt.Sprintf("Namespance [%s], Name [%s], Image [%s], FrameStandalonePort [%d]",
+		in.Namespace,
+		in.Spec.Name,
+		in.Spec.Image,
+		in.Spec.Ports)
 }
 
 //+kubebuilder:object:root=true

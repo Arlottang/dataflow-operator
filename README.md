@@ -20,7 +20,7 @@
 
 ## USE
 
-### Run Controller Local
+### Run the Controller locally
 
 1. Install CRD in the kubernetes
 ```shell
@@ -37,7 +37,7 @@
     kubectl apply -f config/samples/dataflow_v1_user_storage.yaml
 ```
 
-4. Test for frame-mysql-standalone
+4. Test for frame mysql standalone
 
 ```shell
     kubectl apply -f config/samples/dataflow_v1_frame_storage.yaml
