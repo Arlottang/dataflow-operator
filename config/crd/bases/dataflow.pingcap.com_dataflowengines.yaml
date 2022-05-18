@@ -35,16 +35,51 @@ spec:
           spec:
             description: DataflowEngineSpec defines the desired state of DataflowEngine
             properties:
-              image:
-                type: string
-              name:
-                type: string
-              ports:
-                format: int32
-                type: integer
+              frameStandalone:
+                properties:
+                  image:
+                    type: string
+                  name:
+                    description: mysql-standalone-sample
+                    type: string
+                  platform:
+                    type: string
+                  port:
+                    format: int32
+                    type: integer
+                required:
+                - image
+                - name
+                - platform
+                - port
+                type: object
+              userStandalone:
+                properties:
+                  command:
+                    items:
+                      type: string
+                    type: array
+                  image:
+                    type: string
+                  name:
+                    description: etcd-standalone-sample
+                    type: string
+                  ports:
+                    items:
+                      format: int32
+                      type: integer
+                    type: array
+                  size:
+                    format: int32
+                    type: integer
+                required:
+                - image
+                - name
+                - ports
+                - size
+                type: object
             required:
-            - name
-            - ports
+            - frameStandalone
             type: object
           status:
             description: DataflowEngineStatus defines the observed state of DataflowEngine

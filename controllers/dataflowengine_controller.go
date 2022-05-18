@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strconv"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,10 +37,13 @@ import (
 )
 
 const (
-	FRAME_STANDALONE = "mysql-standalone"
-	USER_STANDALONE  = "etcd-standalone"
-	CONTAINER_PORT   = 3306
-	pvFinalizer      = "kubernetes.io/pv-protection"
+	FRAME_STANDALONE          = "mysql-standalone"
+	USER_STANDALONE           = "etcd-standalone"
+	CONTAINER_PORT            = 3306
+	pvFinalizer               = "kubernetes.io/pv-protection"
+	EtcdClusterLabelKey       = "etcd.io/cluster"
+	EtcdClusterCommonLabelKey = "storage-etcd"
+	EtcdDataDirName           = "datadir"
 )
 
 // DataflowEngineReconciler reconciles a DataflowEngine object
@@ -83,6 +87,7 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	deployment := &appsv1.Deployment{}
 
+	logg.Info("4 find mysql deployment")
 	err := r.Get(ctx, req.NamespacedName, deployment)
 
 	if err != nil {
@@ -109,14 +114,61 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{}, nil
+		} else {
+			logg.Error(err, "4.2 get deployment error")
+			return ctrl.Result{}, err
 		}
-
-		logg.Error(err, "4.2 get deployment error")
-		return ctrl.Result{}, nil
 	}
 
-	logg.Info(fmt.Sprintf("5. Finalizers info : [%v]", instance.Finalizers))
+	statefulSet := &appsv1.StatefulSet{}
+
+	logg.Info("5 find etcd statefulSet")
+	err = r.Get(ctx, req.NamespacedName, statefulSet)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logg.Info("5.1 etcd statefulSet is not exists")
+
+			svc := corev1.Service{}
+			svc.Name = instance.Spec.UserStandalone.Name
+			svc.Namespace = instance.Namespace
+
+			or, err := ctrl.CreateOrUpdate(ctx, r, &svc, func() error {
+				MutateHeadlessSvc(instance, &svc)
+				return controllerutil.SetControllerReference(instance, &svc, r.Scheme)
+			})
+
+			if err != nil {
+				logg.Error(err, "5.2 create etcd service error")
+				return ctrl.Result{}, err
+			}
+
+			logg.WithValues("CreateOrUpdate", "Service", or)
+
+			logg.Info("5.3 start create statefulSet")
+
+			var sts appsv1.StatefulSet
+			sts.Name = instance.Spec.UserStandalone.Name
+			sts.Namespace = instance.Namespace
+
+			or, err = ctrl.CreateOrUpdate(ctx, r, &sts, func() error {
+				MutateStatefulSet(instance, &sts)
+				return controllerutil.SetControllerReference(instance, &sts, r.Scheme)
+			})
+
+			if err != nil {
+				logg.Error(err, "5.4 create etcd statefulSet error")
+				return ctrl.Result{}, err
+			}
+			logg.WithValues("CreateOrUpdate", "StatefulSet", or)
+
+			logg.Info("5.5 create statefulSet success")
+		} else {
+			logg.Error(err, "5.6 get etcd statefulSet error")
+			return ctrl.Result{}, err
+		}
+	}
+
+	logg.Info(fmt.Sprintf("6. Finalizers info : [%v]", instance.Finalizers))
 
 	if !instance.DeletionTimestamp.IsZero() {
 		logg.Info("Start delete Finalizers for PV")
@@ -133,7 +185,7 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	//
 	//}
 
-	logg.Info("5 deployment exists")
+	logg.Info("7 dataflow engine reconcile success")
 
 	return ctrl.Result{}, nil
 }
@@ -279,7 +331,7 @@ func createServiceIfNotExists(ctx context.Context, r *DataflowEngineReconciler, 
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
-					Port: dataflow.Spec.Ports,
+					Port: dataflow.Spec.FrameStandalone.Port,
 				},
 			},
 			Selector: map[string]string{
@@ -349,7 +401,7 @@ func createDeploymentIfNotExists(ctx context.Context, r *DataflowEngineReconcile
 					Containers: []corev1.Container{
 						{
 							Name:            FRAME_STANDALONE,
-							Image:           dataflow.Spec.Image,
+							Image:           dataflow.Spec.FrameStandalone.Image,
 							ImagePullPolicy: "IfNotPresent",
 							Env: []corev1.EnvVar{
 								{
@@ -432,4 +484,136 @@ func removeString(slice []string, s string) (result []string) {
 		result = append(result, item)
 	}
 	return
+}
+
+// MutateStatefulSet is etcd cluster for user standalone
+func MutateStatefulSet(de *dataflowv1.DataflowEngine, sts *appsv1.StatefulSet) {
+
+	sts.Labels = map[string]string{
+		EtcdClusterCommonLabelKey: "etcd",
+	}
+
+	sts.Spec = appsv1.StatefulSetSpec{
+		Replicas:    de.Spec.UserStandalone.Size,
+		ServiceName: de.Spec.UserStandalone.Name,
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				EtcdClusterLabelKey: de.Spec.UserStandalone.Name,
+			},
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: de.Namespace,
+				Labels: map[string]string{
+					EtcdClusterLabelKey:       de.Spec.UserStandalone.Name,
+					EtcdClusterCommonLabelKey: "etcd",
+				},
+			},
+			Spec: corev1.PodSpec{
+				Containers: newContainers(de),
+			},
+		},
+		VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: de.Namespace,
+					Name:      EtcdDataDirName,
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					AccessModes: []corev1.PersistentVolumeAccessMode{
+						corev1.ReadWriteOnce,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("1Gi"),
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func newContainers(de *dataflowv1.DataflowEngine) []corev1.Container {
+	return []corev1.Container{
+		{
+			Name:  "etcd",
+			Image: de.Spec.UserStandalone.Image,
+			Ports: []corev1.ContainerPort{
+				{
+					Name:          "peer",
+					ContainerPort: de.Spec.UserStandalone.Ports[1],
+				}, {
+					Name:          "client",
+					ContainerPort: de.Spec.UserStandalone.Ports[0],
+				},
+			},
+			Env: []corev1.EnvVar{
+				{
+					Name:  "INITIAL_CLUSTER_SIZE",
+					Value: strconv.Itoa(int(*de.Spec.UserStandalone.Size)),
+				},
+				{
+					Name:  "SET_NAME",
+					Value: de.Spec.UserStandalone.Name,
+				},
+				{
+					Name: "POD_IP",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "status.podIP",
+						},
+					},
+				},
+				{
+					Name: "MY_NAMESPACE",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.namespace",
+						},
+					},
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      EtcdDataDirName,
+					MountPath: "/var/run/etcd",
+				},
+			},
+			// todo: need see doc
+			Command: de.Spec.UserStandalone.Command,
+			Lifecycle: &corev1.Lifecycle{
+				PreStop: &corev1.LifecycleHandler{
+					Exec: &corev1.ExecAction{
+						// todo: need see doc
+						Command: []string{},
+					},
+				},
+			},
+		},
+	}
+}
+
+func MutateHeadlessSvc(de *dataflowv1.DataflowEngine, svc *corev1.Service) {
+
+	svc.Labels = map[string]string{
+		EtcdClusterCommonLabelKey: "etcd",
+	}
+
+	svc.Spec = corev1.ServiceSpec{
+		ClusterIP: corev1.ClusterIPNone,
+		Selector: map[string]string{
+			EtcdClusterLabelKey: de.Spec.UserStandalone.Name,
+		},
+		Ports: []corev1.ServicePort{
+			{
+				Name: "peer",
+				Port: de.Spec.UserStandalone.Ports[1],
+			},
+			{
+				Name: "client",
+				Port: de.Spec.UserStandalone.Ports[0],
+			},
+		},
+	}
 }

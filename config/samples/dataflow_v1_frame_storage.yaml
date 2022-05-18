@@ -11,6 +11,8 @@ metadata:
   namespace: dev
   name: dataflowengine-sample
 spec:
-  name: tangMysql
-  image: mysql:5.6
-  ports: 3306
+  frameStandalone:
+    name: mysql-standalone-sample
+    image: mysql:5.6
+    platform: linux/amd64
+    port: 3306

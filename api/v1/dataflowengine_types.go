@@ -29,13 +29,33 @@ type DataflowEngineSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	//FrameStandalone FrameStandaloneSpec `json:"frameStandalone"`
+	FrameStandalone FrameStandaloneSpec `json:"frameStandalone"`
 
+	UserStandalone UserStandaloneSpec `json:"userStandalone,omitempty"`
+}
+
+type FrameStandaloneSpec struct {
+	// mysql-standalone-sample
 	Name string `json:"name"`
 
-	Image string `json:"image,omitempty"`
+	Image string `json:"image"`
 
-	Ports int32 `json:"ports"`
+	Platform string `json:"platform"`
+
+	Port int32 `json:"port"`
+}
+
+type UserStandaloneSpec struct {
+	// etcd-standalone-sample
+	Name string `json:"name"`
+
+	Size *int32 `json:"size"`
+
+	Image string `json:"image"`
+
+	Command []string `json:"command,omitempty"`
+
+	Ports []int32 `json:"ports"`
 }
 
 // DataflowEngineStatus defines the observed state of DataflowEngine
@@ -57,11 +77,29 @@ type DataflowEngine struct {
 }
 
 func (in *DataflowEngine) String() string {
-	return fmt.Sprintf("Namespance [%s], Name [%s], Image [%s], FrameStandalonePort [%d]",
+
+	var res []string
+
+	res = append(res, fmt.Sprintf("Namespance [%s], FrameStandaloneName [%s], FrameStandaloneImage [%s], FrameStandalonePort [%d]",
 		in.Namespace,
-		in.Spec.Name,
-		in.Spec.Image,
-		in.Spec.Ports)
+		in.Spec.FrameStandalone.Name,
+		in.Spec.FrameStandalone.Image,
+		in.Spec.FrameStandalone.Port))
+
+	res = append(res, fmt.Sprintf("Namespance [%s], UserStandaloneSpecSize [%d], UserStandaloneSpecName [%s], UserStandaloneSpecImage [%s], UserStandaloneSpecPorts [%v]",
+		in.Namespace,
+		in.Spec.UserStandalone.Size,
+		in.Spec.UserStandalone.Name,
+		in.Spec.UserStandalone.Image,
+		in.Spec.UserStandalone.Ports))
+
+	str := ""
+	for _, s := range res {
+		str += s
+		str += " "
+	}
+	return str
+
 }
 
 //+kubebuilder:object:root=true
