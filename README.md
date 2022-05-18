@@ -24,6 +24,8 @@
 
 1. Install CRD in the kubernetes
 ```shell
+    make manifests
+    
     make install
 ```
 
@@ -39,10 +41,15 @@
 
 4. Test for frame mysql standalone
 
+- Get CR
 ```shell
     kubectl apply -f config/samples/dataflow_v1_frame_storage.yaml
 ```
 
+- Connect to mysql server for testing
+```shell
+    kubectl run -it --rm --image=mysql:5.6 --restart=Never mysql-client -n dev -- mysql -h mysql-service -ppassword
+```
 5. Verify
 ```shell
     kubectl get pod -n dev
