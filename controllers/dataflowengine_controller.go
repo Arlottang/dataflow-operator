@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -38,6 +39,7 @@ const (
 	FRAME_STANDALONE = "mysql-standalone"
 	USER_STANDALONE  = "etcd-standalone"
 	CONTAINER_PORT   = 3306
+	pvFinalizer      = "kubernetes.io/pv-protection"
 )
 
 // DataflowEngineReconciler reconciles a DataflowEngine object
@@ -114,6 +116,23 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
+	logg.Info(fmt.Sprintf("5. Finalizers info : [%v]", instance.Finalizers))
+
+	if !instance.DeletionTimestamp.IsZero() {
+		logg.Info("Start delete Finalizers for PV")
+		return ctrl.Result{}, r.PVFinalizer(ctx, instance)
+	}
+
+	//if !containsString(instance.Finalizers, pvFinalizer) {
+	//	logg.Info("add pv Finalizer")
+	//	instance.Finalizers = append(instance.Finalizers, pvFinalizer)
+	//	if err = r.Client.Update(ctx, instance); err != nil {
+	//		logg.Error(err, "add pv Finalizer error")
+	//		return ctrl.Result{}, err
+	//	}
+	//
+	//}
+
 	logg.Info("5 deployment exists")
 
 	return ctrl.Result{}, nil
@@ -184,8 +203,9 @@ func createPVIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataf
 
 	pv := &corev1.PersistentVolume{}
 
+	// todo: pv may be exists system,
 	err := r.Get(ctx, req.NamespacedName, pv)
-	if err == nil {
+	if err == nil || errors.IsAlreadyExists(err) {
 		logg.Info("a.2 pv exists")
 		return nil
 	}
@@ -214,30 +234,22 @@ func createPVIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataf
 
 			PersistentVolumeSource: corev1.PersistentVolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/mnt/data",
+					Path: "/tmp/data",
 				},
 			},
 			PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimDelete,
 		},
 	}
 
-	logg.Info("a.4 set pv reference")
-
-	err = controllerutil.SetControllerReference(dataflow, pv, r.Scheme)
-	if err != nil {
-		logg.Error(err, "a.5 set controller reference error, about pv")
-		return err
-	}
-
-	logg.Info("a.6 start create PV")
+	logg.Info("a.4 start create PV")
 	err = r.Create(ctx, pv)
 
 	if err != nil {
-		logg.Error(err, "a.7 create PV error")
+		logg.Error(err, "a.5 create PV error")
 		return err
 	}
 
-	logg.Info("a.8 create PV success")
+	logg.Info("a.6 create PV success")
 	return nil
 }
 
@@ -390,9 +402,34 @@ func createDeploymentIfNotExists(ctx context.Context, r *DataflowEngineReconcile
 	return nil
 }
 
+func (r *DataflowEngineReconciler) PVFinalizer(ctx context.Context, de *dataflowv1.DataflowEngine) error {
+
+	de.Finalizers = removeString(de.Finalizers, pvFinalizer)
+	return r.Client.Update(ctx, de)
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *DataflowEngineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dataflowv1.DataflowEngine{}).
 		Complete(r)
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func removeString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
 }
