@@ -25,25 +25,20 @@ func (r *DataflowEngineReconciler) ReconcileFrameStandalone(ctx context.Context,
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logg.Info("4.1 deployment is not exists")
-
-			if err = createPVIfNotExists(ctx, r, instance, req); err != nil {
-				logg.Error(err, "4.1.a create PV error")
-				return ctrl.Result{}, err
-			}
+			logg.Info("4.1 deployment is not exists, will create it")
 
 			if err = createPVCIfNotExists(ctx, r, instance, req); err != nil {
-				logg.Error(err, "4.1.b create PVC error")
+				logg.Error(err, "4.1.a create PVC error")
 				return ctrl.Result{}, nil
 			}
 
 			if err = createServiceIfNotExists(ctx, r, instance, req); err != nil {
-				logg.Error(err, "4.1.c create mysql service error")
+				logg.Error(err, "4.1.b create mysql service error")
 				return ctrl.Result{}, err
 			}
 
 			if err = createDeploymentIfNotExists(ctx, r, instance, req); err != nil {
-				logg.Error(err, "4.1.d create mysql deployment error")
+				logg.Error(err, "4.1.c create mysql deployment error")
 				return ctrl.Result{}, err
 			}
 
@@ -58,81 +53,24 @@ func (r *DataflowEngineReconciler) ReconcileFrameStandalone(ctx context.Context,
 	return ctrl.Result{}, nil
 }
 
-func createPVIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataflow *dataflowv1.DataflowEngine, req ctrl.Request) error {
-	logg := log.FromContext(ctx)
-
-	logg.Info("a.1 start create PV if not exists")
-
-	pv := &corev1.PersistentVolume{}
-
-	// todo: pv may be exists system,
-	err := r.Get(ctx, req.NamespacedName, pv)
-	if err == nil || errors.IsAlreadyExists(err) {
-		logg.Info("a.2 pv exists")
-		return nil
-	}
-
-	if !errors.IsNotFound(err) {
-		logg.Error(err, "a.3 query pv error")
-		return err
-	}
-
-	pv = &corev1.PersistentVolume{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: dataflow.Namespace,
-			Name:      "mysql-pv-volume",
-			Labels: map[string]string{
-				"type": "local",
-			},
-		},
-		Spec: corev1.PersistentVolumeSpec{
-			StorageClassName: "manual",
-			Capacity: corev1.ResourceList{
-				corev1.ResourceStorage: resource.MustParse("10Gi"),
-			},
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
-			},
-
-			PersistentVolumeSource: corev1.PersistentVolumeSource{
-				HostPath: &corev1.HostPathVolumeSource{
-					Path: "/tmp/data",
-				},
-			},
-			PersistentVolumeReclaimPolicy: corev1.PersistentVolumeReclaimDelete,
-		},
-	}
-
-	logg.Info("a.4 start create PV")
-	err = r.Create(ctx, pv)
-
-	if err != nil {
-		logg.Error(err, "a.5 create PV error")
-		return err
-	}
-
-	logg.Info("a.6 create PV success")
-	return nil
-}
-
 func createPVCIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataflow *dataflowv1.DataflowEngine, req ctrl.Request) error {
 	logg := log.FromContext(ctx)
-	logg.Info("b.1 start create pvc for pc")
+	logg.Info("a.1 start create pvc for pc")
 
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, req.NamespacedName, pvc)
 
 	if err == nil {
-		logg.Info("b.2 pvc exists")
+		logg.Info("a.2 pvc exists")
 		return nil
 	}
 
 	if !errors.IsNotFound(err) {
-		logg.Error(err, "b.3 query pvc error")
+		logg.Error(err, "a.3 query pvc error")
 		return err
 	}
 
-	scn := "manual"
+	scn := "mysql"
 	pvc = &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: dataflow.Namespace,
@@ -145,29 +83,29 @@ func createPVCIfNotExists(ctx context.Context, r *DataflowEngineReconciler, data
 			},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse("10Gi"),
+					corev1.ResourceStorage: resource.MustParse("5Gi"),
 				},
 			},
 		},
 	}
 
-	logg.Info("b.4 set pvc reference")
+	logg.Info("a.4 set pvc reference")
 
 	err = controllerutil.SetControllerReference(dataflow, pvc, r.Scheme)
 	if err != nil {
-		logg.Error(err, "b.5 set controller reference error, about pvc")
+		logg.Error(err, "a.5 set controller reference error, about pvc")
 		return err
 	}
 
-	logg.Info("b.6 start create PVC")
+	logg.Info("a.6 start create PVC")
 	err = r.Create(ctx, pvc)
 
 	if err != nil {
-		logg.Error(err, "b.7 create PVC error")
+		logg.Error(err, "a.7 create PVC error")
 		return err
 	}
 
-	logg.Info("b.8 create PVC success")
+	logg.Info("a.8 create PVC success")
 
 	return nil
 
@@ -176,18 +114,18 @@ func createPVCIfNotExists(ctx context.Context, r *DataflowEngineReconciler, data
 func createServiceIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataflow *dataflowv1.DataflowEngine, req ctrl.Request) error {
 	logg := log.FromContext(ctx)
 
-	logg.Info("c.1 start create mysql service if not exists")
+	logg.Info("b.1 start create mysql service if not exists")
 
 	service := &corev1.Service{}
 
 	err := r.Get(ctx, req.NamespacedName, service)
 	if err == nil {
-		logg.Info("c.2 mysql service exists")
+		logg.Info("b.2 mysql service exists")
 		return nil
 	}
 
 	if !errors.IsNotFound(err) {
-		logg.Error(err, "c.3 query mysql service error")
+		logg.Error(err, "b.3 query mysql service error")
 		return err
 	}
 
@@ -209,38 +147,38 @@ func createServiceIfNotExists(ctx context.Context, r *DataflowEngineReconciler, 
 		},
 	}
 
-	logg.Info("c.4 set mysql service reference")
+	logg.Info("b.4 set mysql service reference")
 
 	if err = controllerutil.SetControllerReference(dataflow, service, r.Scheme); err != nil {
-		logg.Error(err, "c.5 set mysql service reference error")
+		logg.Error(err, "b.5 set mysql service reference error")
 		return err
 	}
 
-	logg.Info("c.6 start create mysql service")
+	logg.Info("b.6 start create mysql service")
 
 	if err = r.Create(ctx, service); err != nil {
-		logg.Error(err, "c.7 create mysql service error")
+		logg.Error(err, "b.7 create mysql service error")
 		return err
 	}
 
-	logg.Info("c.8 create mysql service success")
+	logg.Info("b.8 create mysql service success")
 	return nil
 }
 
 func createDeploymentIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataflow *dataflowv1.DataflowEngine, req ctrl.Request) error {
 	logg := log.FromContext(ctx)
-	logg.Info("d.1 start create deployment for mysql")
+	logg.Info("c.1 start create deployment for mysql")
 
 	deployment := &appsv1.Deployment{}
 
 	err := r.Get(ctx, req.NamespacedName, deployment)
 	if err == nil {
-		logg.Info("d.2 mysql deployment exists")
+		logg.Info("c.2 mysql deployment exists")
 		return nil
 	}
 
 	if !errors.IsNotFound(err) {
-		logg.Error(err, "d.3 query mysql deployment error")
+		logg.Error(err, "c.3 query mysql deployment error")
 		return err
 	}
 
@@ -306,18 +244,18 @@ func createDeploymentIfNotExists(ctx context.Context, r *DataflowEngineReconcile
 		},
 	}
 
-	logg.Info("d.4 set mysql deployment reference")
+	logg.Info("c.4 set mysql deployment reference")
 	if err = controllerutil.SetControllerReference(dataflow, deployment, r.Scheme); err != nil {
-		logg.Error(err, "d.5 set mysql deployment reference error")
+		logg.Error(err, "c.5 set mysql deployment reference error")
 		return err
 	}
 
-	logg.Info("d.6 start create deployment")
+	logg.Info("c.6 start create deployment")
 	if err = r.Create(ctx, deployment); err != nil {
-		logg.Error(err, "d.7 create mysql deployment error")
+		logg.Error(err, "c.7 create mysql deployment error")
 		return err
 	}
 
-	logg.Info("d.8 create mysql deployment success")
+	logg.Info("c.8 create mysql deployment success")
 	return nil
 }

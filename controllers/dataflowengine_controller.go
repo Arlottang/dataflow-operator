@@ -33,9 +33,8 @@ const (
 	USER_STANDALONE           = "etcd-standalone"
 	CONTAINER_PORT            = 3306
 	pvFinalizer               = "kubernetes.io/pv-protection"
-	EtcdClusterLabelKey       = "etcd.io/cluster"
 	EtcdClusterCommonLabelKey = "storage-etcd"
-	EtcdDataDirName           = "datadir"
+	//EtcdDataDirName           = "datadir"
 )
 
 // DataflowEngineReconciler reconciles a DataflowEngine object
@@ -75,21 +74,29 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
-	logg.Info("3 get dataflow engine instance success : " + instance.String())
+	logg.Info("2.3 get dataflow engine instance success : " + instance.String())
+
+	logg.Info("3 start create pv process")
+	if err := createPVIfNotExists(ctx, r, instance, req); err != nil {
+		logg.Error(err, "3.7 handle all pv error")
+		return ctrl.Result{}, err
+	}
 
 	logg.Info("4 start frame standalone reconcile logic")
 	result, err := r.ReconcileFrameStandalone(ctx, instance, req)
 
 	if err != nil {
+		logg.Error(err, "4.4 frame standalone reconcile error")
 		return result, err
 	}
 
-	//logg.Info("5 start user standalone reconcile logic")
-	//result, err = r.ReconcileUserStandalone(ctx, instance, req)
-	//
-	//if err != nil {
-	//	return result, err
-	//}
+	logg.Info("5 start user standalone reconcile logic")
+	result, err = r.ReconcileUserStandalone(ctx, instance, req)
+
+	if err != nil {
+		logg.Error(err, "5.3 user standalone reconcile error")
+		return result, err
+	}
 
 	logg.Info(fmt.Sprintf("6. Finalizers info : [%v]", instance.Finalizers))
 
