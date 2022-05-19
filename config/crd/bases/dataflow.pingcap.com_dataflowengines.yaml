@@ -78,8 +78,6 @@ spec:
                 - ports
                 - size
                 type: object
-            required:
-            - frameStandalone
             type: object
           status:
             description: DataflowEngineStatus defines the observed state of DataflowEngine

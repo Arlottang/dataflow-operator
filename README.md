@@ -55,7 +55,7 @@
     kubectl get pod -n dev
 ```
 
-6. Delete CD
+6. Delete CR
 ```shell
     kubectl delete -f xxx.yaml
 ```

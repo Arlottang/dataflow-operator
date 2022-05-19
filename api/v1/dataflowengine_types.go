@@ -29,7 +29,7 @@ type DataflowEngineSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	FrameStandalone FrameStandaloneSpec `json:"frameStandalone"`
+	FrameStandalone FrameStandaloneSpec `json:"frameStandalone,omitempty"`
 
 	UserStandalone UserStandaloneSpec `json:"userStandalone,omitempty"`
 }
