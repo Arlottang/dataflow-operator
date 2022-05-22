@@ -79,12 +79,6 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	logg.Info("2.3 get dataflow engine instance success : " + instance.String())
 
-	logg.Info("3 start create pv process")
-	if err := createPVIfNotExists(ctx, r, instance, req); err != nil {
-		logg.Error(err, "3.7 handle all pv error")
-		return ctrl.Result{}, err
-	}
-
 	logg.Info("4 start frame standalone reconcile logic")
 	result, err := r.ReconcileFrameStandalone(ctx, instance, req)
 
@@ -125,6 +119,9 @@ func (r *DataflowEngineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&dataflowv1.DataflowEngine{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
+		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.PersistentVolume{}).
+		Owns(&corev1.PersistentVolumeClaim{}).
 		Complete(r)
 }
 

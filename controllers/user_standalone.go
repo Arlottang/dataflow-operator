@@ -40,7 +40,7 @@ func (r *DataflowEngineReconciler) ReconcileUserStandalone(ctx context.Context, 
 				return ctrl.Result{}, err
 			}
 
-			logg.Info("CreateOrUpdate", "Service", or)
+			logg.Info("CreateOrUpdate", "Etcd Service", or)
 
 			var sts appsv1.StatefulSet
 			sts.Name = instance.Spec.UserStandalone.Name
@@ -54,14 +54,14 @@ func (r *DataflowEngineReconciler) ReconcileUserStandalone(ctx context.Context, 
 				return ctrl.Result{}, err
 			}
 
-			logg.Info("CreateOrUpdate", "StatefulSet", or)
+			logg.Info("CreateOrUpdate", "Etcd StatefulSet", or)
 		} else {
 			logg.Error(err, "get etcd statefulSet error")
 			return ctrl.Result{}, err
 		}
 	}
 
-	logg.Info("reconcile etcd statefulSet success")
+	logg.Info("user standalone reconcile success")
 	return ctrl.Result{}, nil
 }
 

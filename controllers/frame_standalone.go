@@ -20,222 +20,167 @@ func (r *DataflowEngineReconciler) ReconcileFrameStandalone(ctx context.Context,
 
 	deployment := &appsv1.Deployment{}
 
-	logg.Info("4.0 find mysql deployment")
+	logg.Info("4 find mysql deployment")
 	err := r.Get(ctx, req.NamespacedName, deployment)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logg.Info("4.1 deployment is not exists, will create it")
+			logg.Info("mysql deployment is not exists, will create it")
 
-			if err = createPVCIfNotExists(ctx, r, instance, req); err != nil {
-				logg.Error(err, "4.1.a create PVC error")
-				return ctrl.Result{}, nil
+			var pv corev1.PersistentVolume
+			pv.Name = "mysql-standalone-pv-volume"
+			//pv.Namespace = instance.Namespace
+			createPVIfNotExists(&pv)
+			err := r.Create(ctx, &pv)
+			if err != nil {
+				if errors.IsAlreadyExists(err) {
+					err = nil
+				} else {
+					logg.Error(err, "create mysql pv error")
+					return ctrl.Result{}, err
+				}
 			}
 
-			if err = createServiceIfNotExists(ctx, r, instance, req); err != nil {
-				logg.Error(err, "4.1.b create mysql service error")
-				return ctrl.Result{}, err
+			logg.Info("Create", "Mysql PV", "success")
+
+			var pvc corev1.PersistentVolumeClaim
+			pvc.Name = "mysql-pv-claim"
+			pvc.Namespace = instance.Namespace
+			createPVCIfNotExists(&pvc)
+			err = r.Create(ctx, &pvc)
+			if err != nil {
+				if errors.IsAlreadyExists(err) {
+					err = nil
+				} else {
+					logg.Error(err, "create mysql pv error")
+					return ctrl.Result{}, err
+				}
 			}
 
-			if err = createDeploymentIfNotExists(ctx, r, instance, req); err != nil {
-				logg.Error(err, "4.1.c create mysql deployment error")
-				return ctrl.Result{}, err
+			logg.Info("Create", "Mysql PVC", "success")
+
+			var svc corev1.Service
+			svc.Name = "mysql-service"
+			svc.Namespace = instance.Namespace
+
+			or, err := ctrl.CreateOrUpdate(ctx, r.Client, &svc, func() error {
+				createServiceIfNotExists(instance, &svc)
+				return controllerutil.SetControllerReference(instance, &svc, r.Scheme)
+			})
+
+			if err != nil {
+				logg.Error(err, "create mysql service error")
 			}
+
+			logg.Info("CreateOrUpdate", "Mysql Service", or)
+
+			var deploy appsv1.Deployment
+			deploy.Name = FRAME_STANDALONE
+			deploy.Namespace = instance.Namespace
+			or, err = ctrl.CreateOrUpdate(ctx, r.Client, &deploy, func() error {
+				createDeploymentIfNotExists(instance, &deploy)
+				return controllerutil.SetControllerReference(instance, &deploy, r.Scheme)
+			})
+
+			if err != nil {
+				logg.Error(err, "create mysql deployment error")
+			}
+
+			logg.Info("CreateOrUpdate", "Mysql Deployment", or)
 
 		} else {
-			logg.Error(err, "4.2 get deployment error")
+			logg.Error(err, "get deployment error")
 			return ctrl.Result{}, err
 		}
 	}
 
-	logg.Info("4.3 frame standalone reconcile success")
+	logg.Info("frame standalone reconcile success")
 
 	return ctrl.Result{}, nil
 }
 
-func createPVCIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataflow *dataflowv1.DataflowEngine, req ctrl.Request) error {
-	logg := log.FromContext(ctx)
-	logg.Info("a.1 start create pvc for pc")
-
-	pvc := &corev1.PersistentVolumeClaim{}
-	err := r.Get(ctx, req.NamespacedName, pvc)
-
-	if err == nil {
-		logg.Info("a.2 pvc exists")
-		return nil
-	}
-
-	if !errors.IsNotFound(err) {
-		logg.Error(err, "a.3 query pvc error")
-		return err
-	}
+func createPVCIfNotExists(pvc *corev1.PersistentVolumeClaim) {
 
 	scn := "mysql"
-	pvc = &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: dataflow.Namespace,
-			Name:      "mysql-pv-claim",
+	pvc.Spec = corev1.PersistentVolumeClaimSpec{
+		StorageClassName: &scn,
+		AccessModes: []corev1.PersistentVolumeAccessMode{
+			corev1.ReadWriteOnce,
 		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			StorageClassName: &scn,
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
-			},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: resource.MustParse("5Gi"),
-				},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceStorage: resource.MustParse("5Gi"),
 			},
 		},
 	}
-
-	logg.Info("a.4 set pvc reference")
-
-	err = controllerutil.SetControllerReference(dataflow, pvc, r.Scheme)
-	if err != nil {
-		logg.Error(err, "a.5 set controller reference error, about pvc")
-		return err
-	}
-
-	logg.Info("a.6 start create PVC")
-	err = r.Create(ctx, pvc)
-
-	if err != nil {
-		logg.Error(err, "a.7 create PVC error")
-		return err
-	}
-
-	logg.Info("a.8 create PVC success")
-
-	return nil
 
 }
 
-func createServiceIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataflow *dataflowv1.DataflowEngine, req ctrl.Request) error {
-	logg := log.FromContext(ctx)
+func createServiceIfNotExists(de *dataflowv1.DataflowEngine, svc *corev1.Service) {
 
-	logg.Info("b.1 start create mysql service if not exists")
-
-	service := &corev1.Service{}
-
-	err := r.Get(ctx, req.NamespacedName, service)
-	if err == nil {
-		logg.Info("b.2 mysql service exists")
-		return nil
-	}
-
-	if !errors.IsNotFound(err) {
-		logg.Error(err, "b.3 query mysql service error")
-		return err
-	}
-
-	service = &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: dataflow.Namespace,
-			Name:      "mysql-service",
+	svc.Spec = corev1.ServiceSpec{
+		ClusterIP: corev1.ClusterIPNone,
+		Selector: map[string]string{
+			"storage": FRAME_STANDALONE,
 		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{
-				{
-					Port: dataflow.Spec.FrameStandalone.Port,
-				},
+		Ports: []corev1.ServicePort{
+			{
+				Port: de.Spec.FrameStandalone.Port,
 			},
-			Selector: map[string]string{
+		},
+	}
+}
+
+func createDeploymentIfNotExists(de *dataflowv1.DataflowEngine, deploy *appsv1.Deployment) {
+
+	deploy.Spec = appsv1.DeploymentSpec{
+		Replicas: pointer.Int32Ptr(1),
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
 				"storage": FRAME_STANDALONE,
 			},
-			ClusterIP: "None",
 		},
-	}
-
-	logg.Info("b.4 set mysql service reference")
-
-	if err = controllerutil.SetControllerReference(dataflow, service, r.Scheme); err != nil {
-		logg.Error(err, "b.5 set mysql service reference error")
-		return err
-	}
-
-	logg.Info("b.6 start create mysql service")
-
-	if err = r.Create(ctx, service); err != nil {
-		logg.Error(err, "b.7 create mysql service error")
-		return err
-	}
-
-	logg.Info("b.8 create mysql service success")
-	return nil
-}
-
-func createDeploymentIfNotExists(ctx context.Context, r *DataflowEngineReconciler, dataflow *dataflowv1.DataflowEngine, req ctrl.Request) error {
-	logg := log.FromContext(ctx)
-	logg.Info("c.1 start create deployment for mysql")
-
-	deployment := &appsv1.Deployment{}
-
-	err := r.Get(ctx, req.NamespacedName, deployment)
-	if err == nil {
-		logg.Info("c.2 mysql deployment exists")
-		return nil
-	}
-
-	if !errors.IsNotFound(err) {
-		logg.Error(err, "c.3 query mysql deployment error")
-		return err
-	}
-
-	deployment = &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: dataflow.Namespace,
-			Name:      FRAME_STANDALONE,
+		Strategy: appsv1.DeploymentStrategy{
+			Type: appsv1.RecreateDeploymentStrategyType,
 		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: pointer.Int32Ptr(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
 					"storage": FRAME_STANDALONE,
 				},
 			},
-			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RecreateDeploymentStrategyType,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"storage": FRAME_STANDALONE,
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:            FRAME_STANDALONE,
-							Image:           dataflow.Spec.FrameStandalone.Image,
-							ImagePullPolicy: "IfNotPresent",
-							Env: []corev1.EnvVar{
-								{
-									Name:  "MYSQL_ROOT_PASSWORD",
-									Value: "password",
-								},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:            FRAME_STANDALONE,
+						Image:           de.Spec.FrameStandalone.Image,
+						ImagePullPolicy: "IfNotPresent",
+						Env: []corev1.EnvVar{
+							{
+								Name:  "MYSQL_ROOT_PASSWORD",
+								Value: "password",
 							},
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "mysql",
-									ContainerPort: CONTAINER_PORT,
-								},
+						},
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "mysql",
+								ContainerPort: CONTAINER_PORT,
 							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "mysql-persistent-storage",
-									MountPath: "/var/lib/mysql",
-								},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "mysql-persistent-storage",
+								MountPath: "/var/lib/mysql",
 							},
 						},
 					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "mysql-persistent-storage",
-							VolumeSource: corev1.VolumeSource{
-								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: "mysql-pv-claim",
-								},
+				},
+				Volumes: []corev1.Volume{
+					{
+						Name: "mysql-persistent-storage",
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "mysql-pv-claim",
 							},
 						},
 					},
@@ -243,19 +188,4 @@ func createDeploymentIfNotExists(ctx context.Context, r *DataflowEngineReconcile
 			},
 		},
 	}
-
-	logg.Info("c.4 set mysql deployment reference")
-	if err = controllerutil.SetControllerReference(dataflow, deployment, r.Scheme); err != nil {
-		logg.Error(err, "c.5 set mysql deployment reference error")
-		return err
-	}
-
-	logg.Info("c.6 start create deployment")
-	if err = r.Create(ctx, deployment); err != nil {
-		logg.Error(err, "c.7 create mysql deployment error")
-		return err
-	}
-
-	logg.Info("c.8 create mysql deployment success")
-	return nil
 }
