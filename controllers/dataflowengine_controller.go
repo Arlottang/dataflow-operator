@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,11 +32,12 @@ import (
 
 const (
 	FRAME_STANDALONE          = "mysql-standalone"
-	USER_STANDALONE           = "etcd-standalone"
+	USER_STANDALONE           = "etcd-sample"
 	CONTAINER_PORT            = 3306
 	pvFinalizer               = "kubernetes.io/pv-protection"
-	EtcdClusterCommonLabelKey = "storage-etcd"
-	//EtcdDataDirName           = "datadir"
+	EtcdClusterCommonLabelKey = "storage"
+	EtcdDataDirName           = "datadir"
+	EtcdClusterLabelKey       = "etcd-standalone"
 )
 
 // DataflowEngineReconciler reconciles a DataflowEngine object
@@ -120,6 +123,8 @@ func (r *DataflowEngineReconciler) PVFinalizer(ctx context.Context, de *dataflow
 func (r *DataflowEngineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dataflowv1.DataflowEngine{}).
+		Owns(&appsv1.StatefulSet{}).
+		Owns(&corev1.Service{}).
 		Complete(r)
 }
 

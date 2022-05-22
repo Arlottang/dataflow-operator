@@ -24,21 +24,6 @@ func buildPVConfig() []pvConfig {
 			StorageClassName: "mysql",
 			Capacity:         "5Gi",
 		},
-		{
-			Name:             "etcd-standalone-pv-volume-0",
-			StorageClassName: "etcd",
-			Capacity:         "1Gi",
-		},
-		{
-			Name:             "etcd-standalone-pv-volume-1",
-			StorageClassName: "etcd",
-			Capacity:         "1Gi",
-		},
-		{
-			Name:             "etcd-standalone-pv-volume-2",
-			StorageClassName: "etcd",
-			Capacity:         "1Gi",
-		},
 	}
 
 	return pvConfigs

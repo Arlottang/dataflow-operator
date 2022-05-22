@@ -17,7 +17,7 @@ spec:
     platform: linux/amd64
     port: 3306
   userStandalone:
-    name: etcd-standalone-sample
+    name: etcd-demo
     size: 3
     image: cnych/etcd:v3.4.13
     ports:
