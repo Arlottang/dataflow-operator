@@ -29,11 +29,11 @@ type DataflowEngineSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Image string `json:"image"`
+	Image string `json:"image,omitempty"`
 
-	Master ServerMasterSpec `json:"master"`
+	Master ServerMasterSpec `json:"master,omitempty"`
 
-	Executor ServerExecutorSpec `json:"executor"`
+	Executor ServerExecutorSpec `json:"executor,omitempty"`
 
 	FrameStandalone FrameStandaloneSpec `json:"frameStandalone,omitempty"`
 
@@ -79,8 +79,6 @@ type ServerExecutorSpec struct {
 
 	Size *int32 `json:"size,omitempty"`
 
-	Image string `json:"image"`
-
 	Command []string `json:"command,omitempty"`
 
 	Ports []int32 `json:"ports"`
@@ -90,6 +88,9 @@ type ServerExecutorSpec struct {
 type DataflowEngineStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	MasterNames []string `json:"masterNames"`
+
+	ExecutorNames []string `json:"executorNames"`
 }
 
 //+kubebuilder:object:root=true

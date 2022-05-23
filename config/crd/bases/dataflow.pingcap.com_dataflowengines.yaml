@@ -35,6 +35,26 @@ spec:
           spec:
             description: DataflowEngineSpec defines the desired state of DataflowEngine
             properties:
+              executor:
+                properties:
+                  command:
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    type: string
+                  ports:
+                    items:
+                      format: int32
+                      type: integer
+                    type: array
+                  size:
+                    format: int32
+                    type: integer
+                required:
+                - name
+                - ports
+                type: object
               frameStandalone:
                 properties:
                   image:
@@ -52,6 +72,28 @@ spec:
                 - name
                 - platform
                 - port
+                type: object
+              image:
+                type: string
+              master:
+                properties:
+                  command:
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    type: string
+                  ports:
+                    items:
+                      format: int32
+                      type: integer
+                    type: array
+                  size:
+                    format: int32
+                    type: integer
+                required:
+                - name
+                - ports
                 type: object
               userStandalone:
                 properties:
@@ -81,6 +123,21 @@ spec:
             type: object
           status:
             description: DataflowEngineStatus defines the observed state of DataflowEngine
+            properties:
+              executorNames:
+                items:
+                  type: string
+                type: array
+              masterNames:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                items:
+                  type: string
+                type: array
+            required:
+            - executorNames
+            - masterNames
             type: object
         type: object
     served: true
