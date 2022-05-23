@@ -20,7 +20,7 @@ func (r *DataflowEngineReconciler) ReconcileUserStandalone(ctx context.Context, 
 
 	statefulSet := &appsv1.StatefulSet{}
 
-	logg.Info("5 find etcd statefulSet")
+	logg.Info("find etcd statefulSet")
 	err := r.Get(ctx, req.NamespacedName, statefulSet)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -61,7 +61,7 @@ func (r *DataflowEngineReconciler) ReconcileUserStandalone(ctx context.Context, 
 		}
 	}
 
-	logg.Info("user standalone reconcile success")
+	logg.Info("user standalone reconcile end", "reconcile", "success")
 	return ctrl.Result{}, nil
 }
 
@@ -117,7 +117,7 @@ func newContainers(de *dataflowv1.DataflowEngine) []corev1.Container {
 		{
 			Name:            "etcd",
 			Image:           de.Spec.UserStandalone.Image,
-			ImagePullPolicy: "IfNotPresent",
+			ImagePullPolicy: corev1.PullIfNotPresent,
 			Ports: []corev1.ContainerPort{
 				{
 					Name:          "peer",

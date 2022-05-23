@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	dataflowv1 "github.com/StepOnce7/dataflow-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,81 +21,85 @@ func (r *DataflowEngineReconciler) ReconcileFrameStandalone(ctx context.Context,
 
 	deployment := &appsv1.Deployment{}
 
-	logg.Info("4 find mysql deployment")
+	logg.Info("3 find mysql deployment")
 	err := r.Get(ctx, req.NamespacedName, deployment)
 
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logg.Info("mysql deployment is not exists, will create it")
+	logg.Info(fmt.Sprintf("%v", err))
 
-			var pv corev1.PersistentVolume
-			pv.Name = "mysql-standalone-pv-volume"
-			//pv.Namespace = instance.Namespace
-			createPVIfNotExists(&pv)
-			err := r.Create(ctx, &pv)
-			if err != nil {
-				if errors.IsAlreadyExists(err) {
-					err = nil
-				} else {
-					logg.Error(err, "create mysql pv error")
-					return ctrl.Result{}, err
-				}
-			}
-
-			logg.Info("Create", "Mysql PV", "success")
-
-			var pvc corev1.PersistentVolumeClaim
-			pvc.Name = "mysql-pv-claim"
-			pvc.Namespace = instance.Namespace
-			createPVCIfNotExists(&pvc)
-			err = r.Create(ctx, &pvc)
-			if err != nil {
-				if errors.IsAlreadyExists(err) {
-					err = nil
-				} else {
-					logg.Error(err, "create mysql pv error")
-					return ctrl.Result{}, err
-				}
-			}
-
-			logg.Info("Create", "Mysql PVC", "success")
-
-			var svc corev1.Service
-			svc.Name = "mysql-service"
-			svc.Namespace = instance.Namespace
-
-			or, err := ctrl.CreateOrUpdate(ctx, r.Client, &svc, func() error {
-				createServiceIfNotExists(instance, &svc)
-				return controllerutil.SetControllerReference(instance, &svc, r.Scheme)
-			})
-
-			if err != nil {
-				logg.Error(err, "create mysql service error")
-			}
-
-			logg.Info("CreateOrUpdate", "Mysql Service", or)
-
-			var deploy appsv1.Deployment
-			deploy.Name = FRAME_STANDALONE
-			deploy.Namespace = instance.Namespace
-			or, err = ctrl.CreateOrUpdate(ctx, r.Client, &deploy, func() error {
-				createDeploymentIfNotExists(instance, &deploy)
-				return controllerutil.SetControllerReference(instance, &deploy, r.Scheme)
-			})
-
-			if err != nil {
-				logg.Error(err, "create mysql deployment error")
-			}
-
-			logg.Info("CreateOrUpdate", "Mysql Deployment", or)
-
-		} else {
-			logg.Error(err, "get deployment error")
-			return ctrl.Result{}, err
-		}
+	if err == nil {
+		return ctrl.Result{}, nil
 	}
 
-	logg.Info("frame standalone reconcile success")
+	if errors.IsNotFound(err) {
+		logg.Info("mysql deployment is not exists, will create it")
+
+		var pv corev1.PersistentVolume
+		pv.Name = "mysql-standalone-pv-volume"
+		//pv.Namespace = instance.Namespace
+		createPVIfNotExists(&pv)
+		err := r.Create(ctx, &pv)
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				err = nil
+			} else {
+				logg.Error(err, "create mysql pv error")
+				return ctrl.Result{}, err
+			}
+		}
+
+		logg.Info("Create", "Mysql PV", "success")
+
+		var pvc corev1.PersistentVolumeClaim
+		pvc.Name = "mysql-pv-claim"
+		pvc.Namespace = instance.Namespace
+		createPVCIfNotExists(&pvc)
+		err = r.Create(ctx, &pvc)
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				err = nil
+			} else {
+				logg.Error(err, "create mysql pv error")
+				return ctrl.Result{}, err
+			}
+		}
+
+		logg.Info("Create", "Mysql PVC", "success")
+
+		var svc corev1.Service
+		svc.Name = "mysql-service"
+		svc.Namespace = instance.Namespace
+
+		or, err := ctrl.CreateOrUpdate(ctx, r.Client, &svc, func() error {
+			createServiceIfNotExists(instance, &svc)
+			return controllerutil.SetControllerReference(instance, &svc, r.Scheme)
+		})
+
+		if err != nil {
+			logg.Error(err, "create mysql service error")
+		}
+
+		logg.Info("CreateOrUpdate", "Mysql Service", or)
+
+		var deploy appsv1.Deployment
+		deploy.Name = FRAME_STANDALONE
+		deploy.Namespace = instance.Namespace
+		or, err = ctrl.CreateOrUpdate(ctx, r.Client, &deploy, func() error {
+			createDeploymentIfNotExists(instance, &deploy)
+			return controllerutil.SetControllerReference(instance, &deploy, r.Scheme)
+		})
+
+		if err != nil {
+			logg.Error(err, "create mysql deployment error")
+		}
+
+		logg.Info("CreateOrUpdate", "Mysql Deployment", or)
+
+	} else {
+		logg.Error(err, "get deployment error")
+		return ctrl.Result{}, err
+	}
+
+	logg.Info("frame standalone reconcile end", "reconcile", "success")
 
 	return ctrl.Result{}, nil
 }
