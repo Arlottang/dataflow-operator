@@ -31,13 +31,16 @@ import (
 )
 
 const (
-	FRAME_STANDALONE          = "mysql-standalone"
-	USER_STANDALONE           = "etcd-sample"
-	CONTAINER_PORT            = 3306
-	pvFinalizer               = "kubernetes.io/pv-protection"
-	EtcdClusterCommonLabelKey = "storage"
-	EtcdDataDirName           = "datadir"
-	EtcdClusterLabelKey       = "etcd-standalone"
+	FRAME_STANDALONE              = "mysql-standalone"
+	USER_STANDALONE               = "etcd-sample"
+	CONTAINER_PORT                = 3306
+	pvFinalizer                   = "kubernetes.io/pv-protection"
+	EtcdClusterCommonLabelKey     = "storage"
+	EtcdDataDirName               = "datadir"
+	EtcdClusterLabelKey           = "etcd-standalone"
+	DataflowEngineCommonLabelKey  = "de"
+	MasterClusterCommonLabelKey   = "de-m"
+	ExecutorClusterCommonLabelKey = "de-e"
 )
 
 // DataflowEngineReconciler reconciles a DataflowEngine object
@@ -79,32 +82,47 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	logg.Info("2.3 get dataflow engine instance success : " + instance.String())
 
-	logg.Info("4 start frame standalone reconcile logic")
+	logg.Info("3 start frame standalone reconcile logic", "reconcile", "init")
 	result, err := r.ReconcileFrameStandalone(ctx, instance, req)
 
 	if err != nil {
-		logg.Error(err, "4.4 frame standalone reconcile error")
+		logg.Error(err, "3 frame standalone reconcile error")
 		return result, err
 	}
 
-	logg.Info("5 start user standalone reconcile logic")
+	logg.Info("4 start user standalone reconcile logic", "reconcile", "init")
 	result, err = r.ReconcileUserStandalone(ctx, instance, req)
 
 	if err != nil {
-		logg.Error(err, "5.3 user standalone reconcile error")
+		logg.Error(err, "4 user standalone reconcile error")
 		return result, err
 	}
 
-	logg.Info(fmt.Sprintf("6. Finalizers info : [%v]", instance.Finalizers))
+	logg.Info("5 start dataflow engine master reconcile logic", "reconcile", "init")
+	result, err = r.ReconcileMaster(ctx, instance, req)
+
+	if err != nil {
+		logg.Error(err, "5 dataflow engine master reconcile error")
+		return result, err
+	}
+
+	logg.Info("6 start dataflow engine executor reconcile logic", "reconcile", "init")
+	result, err = r.ReconcileExecutor(ctx, instance, req)
+
+	if err != nil {
+		logg.Error(err, "6 dataflow engine executor reconcile error")
+	}
+
+	logg.Info(fmt.Sprintf("7 Finalizers info : [%v]", instance.Finalizers))
 
 	if !instance.DeletionTimestamp.IsZero() {
 		logg.Info("Start delete Finalizers for PV")
 		return ctrl.Result{}, r.PVFinalizer(ctx, instance)
 	}
 
-	logg.Info("7 dataflow engine reconcile success")
+	logg.Info("8 dataflow engine reconcile success")
 
-	return ctrl.Result{}, nil
+	return result, nil
 }
 
 func (r *DataflowEngineReconciler) PVFinalizer(ctx context.Context, de *dataflowv1.DataflowEngine) error {

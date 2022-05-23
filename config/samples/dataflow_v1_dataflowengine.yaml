@@ -11,4 +11,52 @@ metadata:
   namespace: dev
   name: dataflowengine-sample
 spec:
-  # TODO(user): Add fields here
+  image: steponce7/dataflow:test
+  master:
+    name: server-master
+    size: 1
+    command:
+      - "./bin/master"
+      - "--config"
+      - "./sample/config/master.toml"
+      - "--master-addr"
+      - "0.0.0.0:10240"
+      - "--advertise-addr"
+      - "server-master:10240"
+      - "--peer-urls"
+      - "http://127.0.0.1:8291"
+      - "--advertise-peer-urls"
+      - "http://server-master:8291"
+      - "--frame-meta-endpoints"
+      - "frame-mysql-standalone:3306"
+      - "--user-meta-endpoints"
+      - "user-etcd-standalone:2379"
+    ports:
+      - 10240
+  executor:
+    name: server-executor
+    size: 1
+    command:
+      - "./bin/executor"
+      - "--config"
+      - "./sample/config/executor.toml"
+      - "--join"
+      - "server-master:10240"
+      - "--worker-addr"
+      - "0.0.0.0:10241"
+      - "--advertise-addr"
+      - "server-executor:10241"
+    ports:
+      - 10241
+  frameStandalone:
+    name: mysql-standalone-sample
+    image: mysql:5.6
+    platform: linux/amd64
+    port: 3306
+  userStandalone:
+    name: etcd-sample
+    size: 3
+    image: cnych/etcd:v3.4.13
+    ports:
+      - 2379
+      - 2380
