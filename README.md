@@ -1,6 +1,6 @@
 # dataflow-operator
 
-- An operator demo which dataflow engine running in kubernetes
+- An operator demo of which dataflow engine running in kubernetes
 
 ---
 
@@ -46,7 +46,7 @@
     kubectl apply -f config/samples/dataflow_v1_user_storage.yaml
 ```
 
-- Connect tp etcd for test
+- Connect to etcd server for test
 
 ```shell
     kubectl exec -it etcd-demo-0 -n dev --  /bin/sh 
@@ -63,7 +63,7 @@
     kubectl apply -f config/samples/dataflow_v1_frame_storage.yaml
 ```
 
-- Connect to mysql server for testing
+- Connect to mysql server for test
 
 ```shell
     kubectl run -it --rm --image=mysql:5.6 --restart=Never mysql-client -n dev -- mysql -h mysql-service -ppassword

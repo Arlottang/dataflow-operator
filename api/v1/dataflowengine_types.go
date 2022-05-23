@@ -29,6 +29,12 @@ type DataflowEngineSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	Image string `json:"image"`
+
+	Master ServerMasterSpec `json:"master"`
+
+	Executor ServerExecutorSpec `json:"executor"`
+
 	FrameStandalone FrameStandaloneSpec `json:"frameStandalone,omitempty"`
 
 	UserStandalone UserStandaloneSpec `json:"userStandalone,omitempty"`
@@ -50,6 +56,28 @@ type UserStandaloneSpec struct {
 	Name string `json:"name"`
 
 	Size *int32 `json:"size"`
+
+	Image string `json:"image"`
+
+	Command []string `json:"command,omitempty"`
+
+	Ports []int32 `json:"ports"`
+}
+
+type ServerMasterSpec struct {
+	Name string `json:"name"`
+
+	Size *int32 `json:"size,omitempty"`
+
+	Command []string `json:"command,omitempty"`
+
+	Ports []int32 `json:"ports"`
+}
+
+type ServerExecutorSpec struct {
+	Name string `json:"name"`
+
+	Size *int32 `json:"size,omitempty"`
 
 	Image string `json:"image"`
 
