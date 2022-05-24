@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	FRAME_STANDALONE              = "mysql-standalone"
+	FRAME_STANDALONE              = "frame-mysql-standalone"
 	USER_STANDALONE               = "etcd-sample"
 	CONTAINER_PORT                = 3306
 	pvFinalizer                   = "kubernetes.io/pv-protection"

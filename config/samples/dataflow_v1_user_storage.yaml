@@ -13,13 +13,13 @@ metadata:
 spec:
   frameStandalone:
     name: mysql-standalone-sample
-    image: mysql:5.6
+    image: mysql:5.7
     platform: linux/amd64
     port: 3306
   userStandalone:
     name: etcd-demo
     size: 3
-    image: cnych/etcd:v3.4.13
+    image: quay.io/coreos/etcd
     ports:
       - 2379
       - 2380

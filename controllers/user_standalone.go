@@ -5,7 +5,6 @@ import (
 	dataflowv1 "github.com/StepOnce7/dataflow-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -18,48 +17,35 @@ func (r *DataflowEngineReconciler) ReconcileUserStandalone(ctx context.Context, 
 
 	logg := log.FromContext(ctx)
 
-	statefulSet := &appsv1.StatefulSet{}
+	var svc corev1.Service
+	svc.Name = instance.Spec.UserStandalone.Name
+	svc.Namespace = instance.Namespace
 
-	logg.Info("find etcd statefulSet")
-	err := r.Get(ctx, req.NamespacedName, statefulSet)
+	or, err := ctrl.CreateOrUpdate(ctx, r.Client, &svc, func() error {
+		MutateHeadlessSvc(instance, &svc)
+		return controllerutil.SetControllerReference(instance, &svc, r.Scheme)
+	})
+
 	if err != nil {
-		if errors.IsNotFound(err) {
-			logg.Info("etcd statefulSet is not exists")
-
-			var svc corev1.Service
-			svc.Name = instance.Spec.UserStandalone.Name
-			svc.Namespace = instance.Namespace
-
-			or, err := ctrl.CreateOrUpdate(ctx, r.Client, &svc, func() error {
-				MutateHeadlessSvc(instance, &svc)
-				return controllerutil.SetControllerReference(instance, &svc, r.Scheme)
-			})
-
-			if err != nil {
-				logg.Error(err, "create etcd service error")
-				return ctrl.Result{}, err
-			}
-
-			logg.Info("CreateOrUpdate", "Etcd Service", or)
-
-			var sts appsv1.StatefulSet
-			sts.Name = instance.Spec.UserStandalone.Name
-			sts.Namespace = instance.Namespace
-			or, err = ctrl.CreateOrUpdate(ctx, r.Client, &sts, func() error {
-				MutateStatefulSet(instance, &sts)
-				return ctrl.SetControllerReference(instance, &sts, r.Scheme)
-			})
-			if err != nil {
-				logg.Error(err, "create etcd statefulSet error")
-				return ctrl.Result{}, err
-			}
-
-			logg.Info("CreateOrUpdate", "Etcd StatefulSet", or)
-		} else {
-			logg.Error(err, "get etcd statefulSet error")
-			return ctrl.Result{}, err
-		}
+		logg.Error(err, "create etcd service error")
+		return ctrl.Result{}, err
 	}
+
+	logg.Info("CreateOrUpdate", "Etcd Service", or)
+
+	var sts appsv1.StatefulSet
+	sts.Name = instance.Spec.UserStandalone.Name
+	sts.Namespace = instance.Namespace
+	or, err = ctrl.CreateOrUpdate(ctx, r.Client, &sts, func() error {
+		MutateStatefulSet(instance, &sts)
+		return ctrl.SetControllerReference(instance, &sts, r.Scheme)
+	})
+	if err != nil {
+		logg.Error(err, "create etcd statefulSet error")
+		return ctrl.Result{}, err
+	}
+
+	logg.Info("CreateOrUpdate", "Etcd StatefulSet", or)
 
 	logg.Info("user standalone reconcile end", "reconcile", "success")
 	return ctrl.Result{}, nil

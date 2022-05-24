@@ -49,10 +49,19 @@
 - Connect to etcd server for test
 
 ```shell
+    // image:cnych/etcd:v3.4.13
     kubectl exec -it etcd-demo-0 -n dev --  /bin/sh 
     
     // input
    etcdctl --endpoints etcd-demo-0.etcd-demo:2379,etcd-demo-1.etcd-demo:2379,etcd-demo-2.etcd-demo:2379 endpoint status --write-out=table
+```
+
+```shell
+    // image:quay.io/coreos/etcd
+    kubectl exec -it etcd-demo-0 -n dev --  /bin/sh
+    
+    // input
+    etcdctl member list
 ```
 
 4. Test for frame mysql standalone
@@ -66,7 +75,7 @@
 - Connect to mysql server for test
 
 ```shell
-    kubectl run -it --rm --image=mysql:5.6 --restart=Never mysql-client -n dev -- mysql -h mysql-service -ppassword
+    kubectl run -it --rm --image=mysql:5.7 --restart=Never mysql-client -n dev -- mysql -h mysql-service -ppassword
 ```
 
 5. Verify
