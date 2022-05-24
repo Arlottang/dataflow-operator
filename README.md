@@ -60,7 +60,9 @@
     // image:quay.io/coreos/etcd
     kubectl exec -it etcd-demo-0 -n dev --  /bin/sh
     
-    // input
+    // input, need set etcd api version 
+    export ETCDCTL_API=3
+    etcdctl --endpoints etcd-demo-0.etcd-demo:2379,etcd-demo-1.etcd-demo:2379,etcd-demo-2.etcd-demo:2379 endpoint status --write-out=table
     etcdctl member list
 ```
 
