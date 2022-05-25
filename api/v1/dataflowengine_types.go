@@ -46,9 +46,15 @@ type FrameStandaloneSpec struct {
 
 	Image string `json:"image"`
 
-	Platform string `json:"platform"`
+	Size *int32 `json:"size,omitempty"`
+
+	Platform string `json:"platform,omitempty"`
 
 	Port int32 `json:"port"`
+
+	ClusterTag bool `json:"clusterTag"`
+
+	BackupCommand []string `json:"backupCommand,omitempty"`
 }
 
 type UserStandaloneSpec struct {

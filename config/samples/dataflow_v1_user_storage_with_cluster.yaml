@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+  labels:
+    name: dev
+---
+apiVersion: dataflow.pingcap.com/v1
+kind: DataflowEngine
+metadata:
+  namespace: dev
+  name: dataflowengine-sample
+spec:
+  frameStandalone:
+    name: mysql
+    image: mysql:5.7
+    size: 3
+    platform: linux/amd64
+    port: 3306
+    clusterTag: true
+    backupCommand:
+      - bash
+      - "-c"
+      - |
+        set -ex
+        cd /var/lib/mysql
+
+        if [[ -f xtrabackup_slave_info && "x$(<xtrabackup_slave_info)" != "x" ]]; then
+          cat xtrabackup_slave_info | sed -E 's/;$//g' > change_master_to.sql.in
+          rm -f xtrabackup_slave_info xtrabackup_binlog_info
+        elif [[ -f xtrabackup_binlog_info ]]; then
+          [[ `cat xtrabackup_binlog_info` =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1
+          rm -f xtrabackup_binlog_info xtrabackup_slave_info
+          echo "CHANGE MASTER TO MASTER_LOG_FILE='${BASH_REMATCH[1]}',\
+                MASTER_LOG_POS=${BASH_REMATCH[2]}" > change_master_to.sql.in
+        fi
+
+        if [[ -f change_master_to.sql.in ]]; then
+          echo "Waiting for mysqld to be ready (accepting connections)"
+          until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done
+
+          echo "Initializing replication from clone position"
+          mysql -h 127.0.0.1 \
+                -e "$(<change_master_to.sql.in), \
+                        MASTER_HOST='mysql-0.mysql', \
+                        MASTER_USER='root', \
+                        MASTER_PASSWORD='', \
+                        MASTER_CONNECT_RETRY=10; \
+                      START SLAVE;" || exit 1
+          mv change_master_to.sql.in change_master_to.sql.orig
+        fi
+
+        exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \
+          "xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root"
+  userStandalone:
+    name: etcd-demo
+    size: 3
+    image: quay.io/coreos/etcd
+    ports:
+      - 2379
+      - 2380

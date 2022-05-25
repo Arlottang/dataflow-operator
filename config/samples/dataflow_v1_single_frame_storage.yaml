@@ -12,14 +12,7 @@ metadata:
   name: dataflowengine-sample
 spec:
   frameStandalone:
-    name: mysql-standalone-sample
+    name: mysql
     image: mysql:5.7
-    platform: linux/amd64
     port: 3306
-  userStandalone:
-    name: etcd-demo
-    size: 3
-    image: quay.io/coreos/etcd
-    ports:
-      - 2379
-      - 2380
+    clusterTag: false

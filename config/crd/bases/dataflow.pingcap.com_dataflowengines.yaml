@@ -57,6 +57,12 @@ spec:
                 type: object
               frameStandalone:
                 properties:
+                  backupCommand:
+                    items:
+                      type: string
+                    type: array
+                  clusterTag:
+                    type: boolean
                   image:
                     type: string
                   name:
@@ -67,10 +73,13 @@ spec:
                   port:
                     format: int32
                     type: integer
+                  size:
+                    format: int32
+                    type: integer
                 required:
+                - clusterTag
                 - image
                 - name
-                - platform
                 - port
                 type: object
               image:

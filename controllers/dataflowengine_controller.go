@@ -35,7 +35,9 @@ const (
 	USER_STANDALONE               = "etcd-sample"
 	CONTAINER_PORT                = 3306
 	pvFinalizer                   = "kubernetes.io/pv-protection"
-	EtcdClusterCommonLabelKey     = "storage"
+	MysqlClusterCommonLabelKey    = "mysql-cluster"
+	MysqlClusterLabelKey          = "mysql-app"
+	EtcdClusterCommonLabelKey     = "etcd-cluster"
 	EtcdDataDirName               = "datadir"
 	EtcdClusterLabelKey           = "etcd-standalone"
 	DataflowEngineCommonLabelKey  = "de"
@@ -83,7 +85,13 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	logg.Info("2.3 get dataflow engine instance success : " + instance.String())
 
 	logg.Info("3 start frame standalone reconcile logic", "reconcile", "init")
-	result, err := r.ReconcileFrameStandalone(ctx, instance, req)
+	var result ctrl.Result
+	var err error
+	if instance.Spec.FrameStandalone.ClusterTag {
+		result, err = r.ReconcileMysqlCluster(ctx, instance, req)
+	} else {
+		result, err = r.ReconcileFrameStandalone(ctx, instance, req)
+	}
 
 	if err != nil {
 		logg.Error(err, "3 frame standalone reconcile error")
@@ -98,20 +106,20 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, err
 	}
 
-	logg.Info("5 start dataflow engine master reconcile logic", "reconcile", "init")
-	result, err = r.ReconcileMaster(ctx, instance, req)
-
-	if err != nil {
-		logg.Error(err, "5 dataflow engine master reconcile error")
-		return result, err
-	}
-
-	logg.Info("6 start dataflow engine executor reconcile logic", "reconcile", "init")
-	result, err = r.ReconcileExecutor(ctx, instance, req)
-
-	if err != nil {
-		logg.Error(err, "6 dataflow engine executor reconcile error")
-	}
+	//logg.Info("5 start dataflow engine master reconcile logic", "reconcile", "init")
+	//result, err = r.ReconcileMaster(ctx, instance, req)
+	//
+	//if err != nil {
+	//	logg.Error(err, "5 dataflow engine master reconcile error")
+	//	return result, err
+	//}
+	//
+	//logg.Info("6 start dataflow engine executor reconcile logic", "reconcile", "init")
+	//result, err = r.ReconcileExecutor(ctx, instance, req)
+	//
+	//if err != nil {
+	//	logg.Error(err, "6 dataflow engine executor reconcile error")
+	//}
 
 	logg.Info(fmt.Sprintf("7 Finalizers info : [%v]", instance.Finalizers))
 
@@ -138,8 +146,7 @@ func (r *DataflowEngineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&appsv1.Deployment{}).
-		Owns(&corev1.PersistentVolume{}).
-		Owns(&corev1.PersistentVolumeClaim{}).
+		Owns(&corev1.ConfigMap{}).
 		Complete(r)
 }
 

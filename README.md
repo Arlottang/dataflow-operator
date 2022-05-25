@@ -43,10 +43,10 @@
 3. Test for user etcd standalone
 
 ```shell
-    kubectl apply -f config/samples/dataflow_v1_user_storage.yaml
+    kubectl apply -f config/samples/dataflow_v1_user_storage_with_single.yaml
 ```
 
-- Connect to etcd server for test
+- Connect to etcd server for test with different images
 
 ```shell
     // image:cnych/etcd:v3.4.13
@@ -54,6 +54,11 @@
     
     // input
    etcdctl --endpoints etcd-demo-0.etcd-demo:2379,etcd-demo-1.etcd-demo:2379,etcd-demo-2.etcd-demo:2379 endpoint status --write-out=table
+   etcdctl member list
+   
+   // verify
+    ping etcd-demo-1.etcd-demo:2379
+    ping etcd-demo-2.etcd-demo:2379
 ```
 
 ```shell
@@ -64,20 +69,52 @@
     export ETCDCTL_API=3
     etcdctl --endpoints etcd-demo-0.etcd-demo:2379,etcd-demo-1.etcd-demo:2379,etcd-demo-2.etcd-demo:2379 endpoint status --write-out=table
     etcdctl member list
+    
+    // verify
+    ping etcd-demo-1.etcd-demo:2379
+    ping etcd-demo-2.etcd-demo:2379
 ```
 
 4. Test for frame mysql standalone
 
-- Get CR
+- Create CR for Single
 
 ```shell
-    kubectl apply -f config/samples/dataflow_v1_frame_storage.yaml
+    kubectl apply -f config/samples/dataflow_v1_single_frame_storage.yaml
 ```
 
 - Connect to mysql server for test
 
 ```shell
-    kubectl run -it --rm --image=mysql:5.7 --restart=Never mysql-client -n dev -- mysql -h mysql-service -ppassword
+    kubectl run -it --rm --image=mysql:5.7 --restart=Never mysql-client -n dev -- mysql -h mysql-service -p123456
+```
+
+- Create CR for Cluster
+
+```shell
+    kubectl apply -f config/samples/dataflow_v1_cluster_frame_storage.yaml
+```
+
+- Connect to mysql server for test
+
+```shell
+// write data
+kubectl run mysql-client -n dev --image=mysql:5.7 -i --rm --restart=Never --\
+  mysql -h mysql-0.mysql <<EOF
+CREATE DATABASE test;
+CREATE TABLE test.messages (message VARCHAR(250));
+INSERT INTO test.messages VALUES ('hello');
+EOF
+```
+```shell
+// read data test1
+kubectl run mysql-client -n dev --image=mysql:5.7 -i -t --rm --restart=Never --\
+  mysql -h mysql -e "SELECT * FROM test.messages"
+      
+// read data test1
+kubectl run mysql-client -n dev --image=mysql:5.7 -i -t --rm --restart=Never --\
+  mysql -h mysql-read -e "SELECT * FROM test.messages"
+
 ```
 
 5. Verify
