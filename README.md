@@ -42,8 +42,24 @@
 
 3. Test for user etcd standalone
 
+- Test for user etcd standalone single
+
 ```shell
     kubectl apply -f config/samples/dataflow_v1_user_storage_with_single.yaml
+```
+
+```shell
+    kubectl exec -it <pod_name> -n dev --  /bin/sh
+    export ETCDCTL_API=3
+    etcdctl member list
+    // see --> started, dataflow-etcd, http://0.0.0.0:2380, http://0.0.0.0:2379
+    // config success
+```
+
+- Test for user etcd standalone cluster
+
+```shell
+    kubectl apply -f config/samples/dataflow_v1_user_storage_with_cluster.yaml
 ```
 
 - Connect to etcd server for test with different images
@@ -88,6 +104,7 @@
 ```shell
     kubectl run -it --rm --image=mysql:5.7 --restart=Never mysql-client -n dev -- mysql -h frame-mysql-standalone -p123456
 ```
+
 ```shell
     // watch pods
     watch kubectl get all -l app=frame-mysql-standalone -n dev
@@ -112,6 +129,7 @@ CREATE TABLE test.messages (message VARCHAR(250));
 INSERT INTO test.messages VALUES ('hello');
 EOF
 ```
+
 ```shell
 // read data test1
 kubectl run mysql-client -n dev --image=mysql:5.7 -i -t --rm --restart=Never --\

@@ -106,6 +106,8 @@ spec:
                 type: object
               userStandalone:
                 properties:
+                  clusterTag:
+                    type: boolean
                   command:
                     items:
                       type: string
@@ -124,10 +126,10 @@ spec:
                     format: int32
                     type: integer
                 required:
+                - clusterTag
                 - image
                 - name
                 - ports
-                - size
                 type: object
             type: object
           status:

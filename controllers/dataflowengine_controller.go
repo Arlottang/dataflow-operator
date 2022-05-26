@@ -32,7 +32,7 @@ import (
 
 const (
 	FRAME_STANDALONE              = "frame-mysql-standalone"
-	USER_STANDALONE               = "etcd-sample"
+	USER_STANDALONE               = "user-etcd-standalone"
 	CONTAINER_PORT                = 3306
 	pvFinalizer                   = "kubernetes.io/pv-protection"
 	MysqlClusterCommonLabelKey    = "mysql-cluster"
@@ -98,13 +98,17 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, err
 	}
 
-	//logg.Info("4 start user standalone reconcile logic", "reconcile", "init")
-	//result, err = r.ReconcileUserStandalone(ctx, instance, req)
-	//
-	//if err != nil {
-	//	logg.Error(err, "4 user standalone reconcile error")
-	//	return result, err
-	//}
+	logg.Info("4 start user standalone reconcile logic", "reconcile", "init")
+	if instance.Spec.UserStandalone.ClusterTag {
+		result, err = r.ReconcileEtcdCluster(ctx, instance, req)
+	} else {
+		result, err = r.ReconcileUserStandalone(ctx, instance, req)
+	}
+
+	if err != nil {
+		logg.Error(err, "4 user standalone reconcile error")
+		return result, err
+	}
 
 	//logg.Info("5 start dataflow engine master reconcile logic", "reconcile", "init")
 	//result, err = r.ReconcileMaster(ctx, instance, req)

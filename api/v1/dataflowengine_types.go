@@ -61,13 +61,15 @@ type UserStandaloneSpec struct {
 	// etcd-standalone-sample
 	Name string `json:"name"`
 
-	Size *int32 `json:"size"`
+	Size *int32 `json:"size,omitempty"`
 
 	Image string `json:"image"`
 
 	Command []string `json:"command,omitempty"`
 
 	Ports []int32 `json:"ports"`
+
+	ClusterTag bool `json:"clusterTag"`
 }
 
 type ServerMasterSpec struct {

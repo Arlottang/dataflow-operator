@@ -12,7 +12,7 @@ metadata:
   name: dataflowengine
 spec:
   frameStandalone:
-    name:  frame-mysql-standalone
+    name: frame-mysql-standalone
     image: mysql:5.7
     platform: linux/amd64
     port: 3306

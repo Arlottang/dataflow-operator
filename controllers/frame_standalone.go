@@ -200,7 +200,7 @@ func createDeploymentIfNotExists(de *dataflowv1.DataflowEngine, deploy *appsv1.D
 					{
 						Name:            de.Spec.FrameStandalone.Name,
 						Image:           de.Spec.FrameStandalone.Image,
-						ImagePullPolicy: "IfNotPresent",
+						ImagePullPolicy: corev1.PullIfNotPresent,
 						//Command: []string{
 						//	"bash", "-c",
 						//	`cp /mnt/config-map/my.cnf /etc/mysql/`,
