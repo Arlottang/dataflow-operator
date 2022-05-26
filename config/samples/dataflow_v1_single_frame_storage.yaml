@@ -9,10 +9,11 @@ apiVersion: dataflow.pingcap.com/v1
 kind: DataflowEngine
 metadata:
   namespace: dev
-  name: dataflowengine-sample
+  name: dataflowengine
 spec:
   frameStandalone:
-    name: mysql
+    name:  frame-mysql-standalone
     image: mysql:5.7
+    platform: linux/amd64
     port: 3306
     clusterTag: false

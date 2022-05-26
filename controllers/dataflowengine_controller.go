@@ -98,13 +98,13 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, err
 	}
 
-	logg.Info("4 start user standalone reconcile logic", "reconcile", "init")
-	result, err = r.ReconcileUserStandalone(ctx, instance, req)
-
-	if err != nil {
-		logg.Error(err, "4 user standalone reconcile error")
-		return result, err
-	}
+	//logg.Info("4 start user standalone reconcile logic", "reconcile", "init")
+	//result, err = r.ReconcileUserStandalone(ctx, instance, req)
+	//
+	//if err != nil {
+	//	logg.Error(err, "4 user standalone reconcile error")
+	//	return result, err
+	//}
 
 	//logg.Info("5 start dataflow engine master reconcile logic", "reconcile", "init")
 	//result, err = r.ReconcileMaster(ctx, instance, req)

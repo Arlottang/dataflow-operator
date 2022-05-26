@@ -86,7 +86,13 @@
 - Connect to mysql server for test
 
 ```shell
-    kubectl run -it --rm --image=mysql:5.7 --restart=Never mysql-client -n dev -- mysql -h mysql-service -p123456
+    kubectl run -it --rm --image=mysql:5.7 --restart=Never mysql-client -n dev -- mysql -h frame-mysql-standalone -p123456
+```
+```shell
+    // watch pods
+    watch kubectl get all -l app=frame-mysql-standalone -n dev
+    // watch service and deployment
+    watch kubectl get all -l frame-mysql-standalone=mysql -n dev
 ```
 
 - Create CR for Cluster
