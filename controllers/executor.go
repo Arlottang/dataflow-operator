@@ -181,9 +181,72 @@ func createExecutorDeployment(de *dataflowv1.DataflowEngine, deploy *appsv1.Depl
 				},
 			},
 			Spec: corev1.PodSpec{
-				InitContainers: []corev1.Container{},
-				Containers:     []corev1.Container{},
-				Volumes:        []corev1.Volume{},
+				InitContainers: []corev1.Container{
+					{
+						Name:  "init-master",
+						Image: "busybox",
+						Command: []string{
+							"sh", "-c",
+							`until nslookup server-master; 
+do 
+	echo waiting for server-master; 
+	sleep 2; 
+done;`,
+						},
+					},
+				},
+				Containers: []corev1.Container{
+					{
+						Name:            de.Spec.Executor.Name,
+						Image:           de.Spec.Image,
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						Command: []string{
+							"./bin/executor",
+							"--config", "/mnt/config.toml",
+							"--join", "server-master:10240",
+							"--worker-addr", "0.0.0.0:10241",
+							"--advertise-addr", "server-executor:10241",
+						},
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "worker",
+								ContainerPort: de.Spec.Executor.Ports,
+								Protocol:      corev1.ProtocolTCP,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "dataflow",
+								MountPath: "/tmp/dataflow",
+							},
+							{
+								Name:      "config-map",
+								MountPath: "/mnt/config-map",
+							},
+						},
+					},
+				},
+				RestartPolicy: corev1.RestartPolicyAlways,
+				Volumes: []corev1.Volume{
+					{
+						Name: "dataflow",
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "executor-pv-claim",
+							},
+						},
+					},
+					{
+						Name: "config-map",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "executorcfm",
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}

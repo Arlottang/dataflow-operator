@@ -15,12 +15,12 @@ spec:
   master:
     name: server-master
     size: 1
-    Ports: 10240
+    ports: 10240
     clusterTag: false
   executor:
     name: server-executor
     size: 1
-    Ports: 10241
+    ports: 10241
     clusterTag: false
   frameStandalone:
     name: frame-mysql-standalone

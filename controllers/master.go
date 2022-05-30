@@ -156,7 +156,12 @@ func createMasterService(de *dataflowv1.DataflowEngine, svc *corev1.Service) {
 		},
 		Ports: []corev1.ServicePort{
 			{
+				Name: "master",
 				Port: de.Spec.Master.Ports,
+			},
+			{
+				Name: "peer",
+				Port: 8291,
 			},
 		},
 	}
@@ -180,9 +185,92 @@ func createMasterDeployment(de *dataflowv1.DataflowEngine, deploy *appsv1.Deploy
 				},
 			},
 			Spec: corev1.PodSpec{
-				InitContainers: []corev1.Container{},
-				Containers:     []corev1.Container{},
-				Volumes:        []corev1.Volume{},
+				InitContainers: []corev1.Container{
+					{
+						Name:  "init-mysql",
+						Image: "busybox",
+						Command: []string{
+							"sh", "-c",
+							`until nslookup frame-mysql-standalone; 
+do 
+	echo waiting for mysql; 
+	sleep 2; 
+done;`,
+						},
+					},
+					{
+						Name:  "init-etcd",
+						Image: "busybox",
+						Command: []string{
+							"sh", "-c",
+							`until nslookup user-etcd-standalone; 
+do 
+	echo waiting for etcd; 
+	sleep 2; 
+done;`,
+						},
+					},
+				},
+				Containers: []corev1.Container{
+					{
+						Name:            de.Spec.Master.Name,
+						Image:           de.Spec.Image,
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						Command: []string{
+							"./bin/master",
+							"--config", "/mnt/config-map/master.toml",
+							"--master-addr", "0.0.0.0:10240",
+							"--advertise-addr", "server-master:10240",
+							"--peer-urls", "http://127.0.0.1:8291",
+							"--advertise-peer-urls", "http://server-master:8291",
+							"--frame-meta-endpoints", "user-etcd-standalone:2379",
+							"--user-meta-endpoints", "user-etcd-standalone:2379",
+						},
+						Ports: []corev1.ContainerPort{
+							{
+								Name:          "master",
+								ContainerPort: de.Spec.Master.Ports,
+								Protocol:      corev1.ProtocolTCP,
+							},
+							{
+								Name:          "peer",
+								ContainerPort: 8291,
+								Protocol:      corev1.ProtocolTCP,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "df",
+								MountPath: "/tmp/df",
+							},
+							{
+								Name:      "config-map",
+								MountPath: "/mnt/config-map",
+							},
+						},
+					},
+				},
+				RestartPolicy: corev1.RestartPolicyAlways,
+				Volumes: []corev1.Volume{
+					{
+						Name: "df",
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "master-pv-claim",
+							},
+						},
+					},
+					{
+						Name: "config-map",
+						VolumeSource: corev1.VolumeSource{
+							ConfigMap: &corev1.ConfigMapVolumeSource{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "mastercfm",
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
