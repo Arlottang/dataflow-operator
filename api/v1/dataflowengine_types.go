@@ -79,7 +79,7 @@ type ServerMasterSpec struct {
 
 	Command []string `json:"command,omitempty"`
 
-	Ports []int32 `json:"ports"`
+	Ports int32 `json:"ports"`
 
 	ClusterTag bool `json:"clusterTag"`
 }
@@ -91,7 +91,7 @@ type ServerExecutorSpec struct {
 
 	Command []string `json:"command,omitempty"`
 
-	Ports []int32 `json:"ports"`
+	Ports int32 `json:"ports"`
 
 	ClusterTag bool `json:"clusterTag"`
 }

@@ -75,6 +75,7 @@ func (r *DataflowEngineReconciler) ReconcileFrameStandalone(ctx context.Context,
 
 	if err != nil {
 		logg.Error(err, "create mysql service error")
+		return ctrl.Result{}, err
 	}
 
 	logg.Info("CreateOrUpdate", "Mysql Service", or)
@@ -89,6 +90,7 @@ func (r *DataflowEngineReconciler) ReconcileFrameStandalone(ctx context.Context,
 
 	if err != nil {
 		logg.Error(err, "create mysql deployment error")
+		return ctrl.Result{}, err
 	}
 
 	logg.Info("CreateOrUpdate", "Mysql Deployment", or)
