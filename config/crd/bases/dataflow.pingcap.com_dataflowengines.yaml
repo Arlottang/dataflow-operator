@@ -37,6 +37,8 @@ spec:
             properties:
               executor:
                 properties:
+                  clusterTag:
+                    type: boolean
                   command:
                     items:
                       type: string
@@ -52,6 +54,7 @@ spec:
                     format: int32
                     type: integer
                 required:
+                - clusterTag
                 - name
                 - ports
                 type: object
@@ -86,6 +89,8 @@ spec:
                 type: string
               master:
                 properties:
+                  clusterTag:
+                    type: boolean
                   command:
                     items:
                       type: string
@@ -101,6 +106,7 @@ spec:
                     format: int32
                     type: integer
                 required:
+                - clusterTag
                 - name
                 - ports
                 type: object

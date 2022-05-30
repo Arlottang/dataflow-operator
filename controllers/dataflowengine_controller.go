@@ -110,20 +110,28 @@ func (r *DataflowEngineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, err
 	}
 
-	//logg.Info("5 start dataflow engine master reconcile logic", "reconcile", "init")
-	//result, err = r.ReconcileMaster(ctx, instance, req)
-	//
-	//if err != nil {
-	//	logg.Error(err, "5 dataflow engine master reconcile error")
-	//	return result, err
-	//}
-	//
-	//logg.Info("6 start dataflow engine executor reconcile logic", "reconcile", "init")
-	//result, err = r.ReconcileExecutor(ctx, instance, req)
-	//
-	//if err != nil {
-	//	logg.Error(err, "6 dataflow engine executor reconcile error")
-	//}
+	logg.Info("5 start dataflow engine master reconcile logic", "reconcile", "init")
+	if instance.Spec.Master.ClusterTag {
+		result, err = r.ReconcileMasterCluster(ctx, instance, req)
+	} else {
+		result, err = r.ReconcileMaster(ctx, instance, req)
+	}
+
+	if err != nil {
+		logg.Error(err, "5 dataflow engine master reconcile error")
+		return result, err
+	}
+
+	logg.Info("6 start dataflow engine executor reconcile logic", "reconcile", "init")
+	if instance.Spec.Executor.ClusterTag {
+		result, err = r.ReconcileExecutorCluster(ctx, instance, req)
+	} else {
+		result, err = r.ReconcileExecutor(ctx, instance, req)
+	}
+
+	if err != nil {
+		logg.Error(err, "6 dataflow engine executor reconcile error")
+	}
 
 	logg.Info(fmt.Sprintf("7 Finalizers info : [%v]", instance.Finalizers))
 

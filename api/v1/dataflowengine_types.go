@@ -80,6 +80,8 @@ type ServerMasterSpec struct {
 	Command []string `json:"command,omitempty"`
 
 	Ports []int32 `json:"ports"`
+
+	ClusterTag bool `json:"clusterTag"`
 }
 
 type ServerExecutorSpec struct {
@@ -90,6 +92,8 @@ type ServerExecutorSpec struct {
 	Command []string `json:"command,omitempty"`
 
 	Ports []int32 `json:"ports"`
+
+	ClusterTag bool `json:"clusterTag"`
 }
 
 // DataflowEngineStatus defines the observed state of DataflowEngine
