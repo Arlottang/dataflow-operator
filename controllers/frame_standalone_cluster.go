@@ -414,4 +414,8 @@ func loadBackupCommand() []string {
         exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \
           "xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root"`,
 	}
+	//return []string{
+	//  "bash", "-c",
+	//  strings.Replace(a, "#######ghjk#####", "\`xxx\`", 1),
+	//}
 }

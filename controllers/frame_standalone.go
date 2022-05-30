@@ -175,36 +175,11 @@ func createDeploymentIfNotExists(de *dataflowv1.DataflowEngine, deploy *appsv1.D
 				},
 			},
 			Spec: corev1.PodSpec{
-				//InitContainers: []corev1.Container{
-				//	{
-				//		Name:            "init-mysql",
-				//		Image:           de.Spec.FrameStandalone.Image,
-				//		ImagePullPolicy: corev1.PullIfNotPresent,
-				//		Command: []string{
-				//			"bash", "-c",
-				//			`cp /mnt/config-map/my.cnf /mnt/conf.d/`,
-				//		},
-				//		VolumeMounts: []corev1.VolumeMount{
-				//			{
-				//				Name:      "config-map",
-				//				MountPath: "/mnt/config-map",
-				//			},
-				//			{
-				//				Name:      "conf",
-				//				MountPath: "/mnt/conf.d",
-				//			},
-				//		},
-				//	},
-				//},
 				Containers: []corev1.Container{
 					{
 						Name:            de.Spec.FrameStandalone.Name,
 						Image:           de.Spec.FrameStandalone.Image,
 						ImagePullPolicy: corev1.PullIfNotPresent,
-						//Command: []string{
-						//	"bash", "-c",
-						//	`cp /mnt/config-map/my.cnf /etc/mysql/`,
-						//},
 						Env: []corev1.EnvVar{
 							{
 								Name:  "MYSQL_ROOT_PASSWORD",
@@ -223,10 +198,11 @@ func createDeploymentIfNotExists(de *dataflowv1.DataflowEngine, deploy *appsv1.D
 								Name:      "mysql-persistent-storage",
 								MountPath: "/var/lib/mysql",
 							},
-							//{
-							//	Name:      "conf",
-							//	MountPath: "/etc/mysql/conf.d",
-							//},
+							{
+								Name:      "config-map",
+								MountPath: "/etc/my.cnf",
+								SubPath:   "my.cnf",
+							},
 						},
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
@@ -260,14 +236,12 @@ func createDeploymentIfNotExists(de *dataflowv1.DataflowEngine, deploy *appsv1.D
 								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "mysqlcfm",
 								},
-							},
-						},
-					},
-					{
-						Name: "conf",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{
-								Medium: corev1.StorageMediumDefault,
+								Items: []corev1.KeyToPath{
+									{
+										Key:  "my.cnf",
+										Path: "my.cnf",
+									},
+								},
 							},
 						},
 					},
