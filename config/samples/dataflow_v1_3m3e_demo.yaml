@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+  labels:
+    name: dev
+---
+apiVersion: dataflow.pingcap.com/v1
+kind: DataflowEngine
+metadata:
+  namespace: dev
+  name: dataflowengine
+spec:
+  image: hub.pingcap.net/ticdc/dataflow:20220531-2
+  master:
+    name: server-master
+    size: 1
+    ports: 10240
+    clusterTag: true
+  executor:
+    name: server-executor
+    size: 3
+    ports: 10241
+    clusterTag: true
+  frameStandalone:
+    name: frame-mysql-standalone
+    image: mysql:5.7
+    platform: linux/amd64
+    port: 3306
+    clusterTag: false
+  userStandalone:
+    name: user-etcd-standalone
+    size: 1
+    image: quay.io/coreos/etcd
+    ports:
+      - 2379
+      - 2380
+    clusterTag: false

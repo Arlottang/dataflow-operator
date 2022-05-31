@@ -10,6 +10,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
+	"strings"
 )
 
 func (r *DataflowEngineReconciler) ReconcileExecutorCluster(ctx context.Context, instance *dataflowv1.DataflowEngine, req ctrl.Request) (ctrl.Result, error) {
@@ -110,16 +112,9 @@ func ExecutorStatefulSet(de *dataflowv1.DataflowEngine, sts *appsv1.StatefulSet)
 			Spec: corev1.PodSpec{
 				InitContainers: []corev1.Container{
 					{
-						Name:  "init-master",
-						Image: "busybox",
-						Command: []string{
-							"sh", "-c",
-							`until nslookup server-master; 
-do 
-	echo waiting for server-master; 
-	sleep 2; 
-done;`,
-						},
+						Name:    "init-master",
+						Image:   "busybox",
+						Command: loadExecutorInitContainerCommand(de),
 					},
 				},
 				Containers: newExecutorContainer(de),
@@ -158,6 +153,34 @@ done;`,
 	// no need for pvc
 }
 
+func loadExecutorInitContainerCommand(de *dataflowv1.DataflowEngine) []string {
+	if *(de.Spec.Master.Size) == 1 {
+		return []string{
+			"sh", "-c",
+			`until nslookup server-master; 
+do 
+	echo waiting for server-master; 
+	sleep 2; 
+done;`,
+		}
+	}
+
+	listenStr := "server-master-" + strconv.Itoa(int(*(de.Spec.Master.Size))-1) + "." + "server-master"
+
+	origin := `until nslookup tmp; 
+do 
+	echo waiting for tmp; 
+	sleep 2; 
+done;`
+
+	currentStr := strings.Replace(origin, "tmp", listenStr, -1)
+
+	return []string{
+		"sh", "-c",
+		currentStr,
+	}
+}
+
 func newExecutorContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
 
 	return []corev1.Container{
@@ -186,13 +209,7 @@ func newExecutorContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
 					Value: "server-executor",
 				},
 			},
-			Command: []string{
-				"/df-executor",
-				"--config", "/mnt/config-map/config.toml",
-				"--join", "server-master:10240",
-				"--worker-addr", "0.0.0.0:10241",
-				"--advertise-addr", "${POD_HOSTNAME}.${EXECUTOR-SERVICE}:10241",
-			},
+			Command: loadExecutorContainerCommand(de),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "dataflow",
@@ -205,4 +222,36 @@ func newExecutorContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
 			},
 		},
 	}
+}
+
+func loadExecutorContainerCommand(de *dataflowv1.DataflowEngine) []string {
+	if *(de.Spec.Master.Size) == 1 {
+		return []string{
+			"/df-executor",
+			"--config", "/mnt/config-map/config.toml",
+			"--join", "server-master:10240",
+			"--worker-addr", "0.0.0.0:10241",
+			"--advertise-addr", "${POD_HOSTNAME}.${EXECUTOR-SERVICE}:10241",
+		}
+	}
+
+	joinStr := ""
+
+	num := int(*(de.Spec.Master.Size))
+
+	for i := 0; i < num; i++ {
+		joinStr += "server-master-" + strconv.Itoa(i) + "." + "server-master" + ":10240"
+		if i == num-1 {
+			break
+		}
+		joinStr += ","
+	}
+	return []string{
+		"/df-executor",
+		"--config", "/mnt/config-map/config.toml",
+		"--join", joinStr,
+		"--worker-addr", "0.0.0.0:10241",
+		"--advertise-addr", "${POD_HOSTNAME}.${EXECUTOR-SERVICE}:10241",
+	}
+
 }
