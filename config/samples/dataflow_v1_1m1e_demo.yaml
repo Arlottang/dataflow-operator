@@ -11,7 +11,7 @@ metadata:
   namespace: dev
   name: dataflowengine
 spec:
-  image: steponce7/dataflow:test
+  image: hub.pingcap.net/ticdc/dataflow:20220531-2
   master:
     name: server-master
     size: 1

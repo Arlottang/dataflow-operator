@@ -127,7 +127,6 @@ func createExecutorConfigMap(cfm *corev1.ConfigMap) {
 keepalive-interval = "500ms"
 session-ttl = 20
 
-join = "0.0.0.0:10240"
 worker-addr = "0.0.0.0:10241"`,
 	}
 }
@@ -201,8 +200,8 @@ done;`,
 						Image:           de.Spec.Image,
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Command: []string{
-							"./bin/executor",
-							"--config", "/mnt/config.toml",
+							"/df-executor",
+							"--config", "/mnt/config-map/config.toml",
 							"--join", "server-master:10240",
 							"--worker-addr", "0.0.0.0:10241",
 							"--advertise-addr", "server-executor:10241",

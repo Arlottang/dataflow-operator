@@ -141,19 +141,40 @@ kubectl run mysql-client -n dev --image=mysql:5.7 -i -t --rm --restart=Never --\
 
 ```
 
-5. Verify
+5. Test for Dataflow Engine
+
+- Test for 1m1e Demo
+
+```shell
+    kubectl apply -f config/samples/dataflow_v1_1m1e_demo.yaml
+```
+
+```shell
+    watch kubectl get all -n dev
+```
+
+```shell
+    kubectl describe pod <pod_name> -n dev
+    kubectl logs <pod_name> -n dev
+```
+
+```shell
+    kubectl delete -f config/samples/dataflow_v1_1m1e_demo.yaml
+```
+
+6. Verify
 
 ```shell
     kubectl get pod -n dev
 ```
 
-6. Delete CR
+7. Delete CR
 
 ```shell
     kubectl delete -f xxx.yaml
 ```
 
-7. Uninstall CRD
+8. Uninstall CRD
 
 ```shell
     make uninstall
