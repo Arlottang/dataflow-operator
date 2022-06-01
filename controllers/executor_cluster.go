@@ -113,7 +113,7 @@ func ExecutorStatefulSet(de *dataflowv1.DataflowEngine, sts *appsv1.StatefulSet)
 				InitContainers: []corev1.Container{
 					{
 						Name:    "init-master",
-						Image:   "busybox",
+						Image:   "busybox:1.28.3",
 						Command: loadExecutorInitContainerCommand(de),
 					},
 				},
@@ -205,8 +205,12 @@ func newExecutorContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
 					},
 				},
 				{
-					Name:  "EXECUTOR-SERVICE",
-					Value: "server-executor",
+					Name:  "EXECUTOR_SERVICE_NAME",
+					Value: de.Spec.Executor.Name,
+				},
+				{
+					Name:  "JOIN_MASTER_CLUSTER",
+					Value: getJoinMasterClusterInfo(de),
 				},
 			},
 			Command: loadExecutorContainerCommand(de),
@@ -227,13 +231,25 @@ func newExecutorContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
 func loadExecutorContainerCommand(de *dataflowv1.DataflowEngine) []string {
 	if *(de.Spec.Master.Size) == 1 {
 		return []string{
-			"/df-executor",
-			"--config", "/mnt/config-map/config.toml",
-			"--join", "server-master:10240",
-			"--worker-addr", "0.0.0.0:10241",
-			"--advertise-addr", "${POD_HOSTNAME}.${EXECUTOR-SERVICE}:10241",
+			"sh", "-c",
+			`exec /df-executor --config /mnt/config-map/config.toml \
+					--join server-master:10240 \
+					--worker-addr 0.0.0.0:10241 \
+					--advertise-addr ${POD_HOSTNAME}.${EXECUTOR_SERVICE_NAME}:10241`,
 		}
 	}
+
+	return []string{
+		"sh", "-c",
+		`exec /df-executor --config /mnt/config-map/config.toml \
+					--join ${JOIN_MASTER_CLUSTER} \
+					--worker-addr 0.0.0.0:10241 \
+					--advertise-addr ${POD_HOSTNAME}.${EXECUTOR_SERVICE_NAME}:10241`,
+	}
+
+}
+
+func getJoinMasterClusterInfo(de *dataflowv1.DataflowEngine) string {
 
 	joinStr := ""
 
@@ -246,12 +262,6 @@ func loadExecutorContainerCommand(de *dataflowv1.DataflowEngine) []string {
 		}
 		joinStr += ","
 	}
-	return []string{
-		"/df-executor",
-		"--config", "/mnt/config-map/config.toml",
-		"--join", joinStr,
-		"--worker-addr", "0.0.0.0:10241",
-		"--advertise-addr", "${POD_HOSTNAME}.${EXECUTOR-SERVICE}:10241",
-	}
 
+	return joinStr
 }

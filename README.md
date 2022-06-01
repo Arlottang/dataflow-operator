@@ -180,7 +180,7 @@ kubectl run mysql-client -n dev --image=mysql:5.7 -i -t --rm --restart=Never --\
 ```
 
 ```shell
-    kubectl delete -f config/samples/dataflow_v1_1m1e_demo.yaml
+    kubectl delete -f config/samples/dataflow_v1_1m3e_demo.yaml
 ```
 
 6. Verify

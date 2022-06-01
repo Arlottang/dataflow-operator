@@ -59,3 +59,4 @@ spec:
     ports:
       - 2379
       - 2380
+    clusterTag: true
