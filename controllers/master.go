@@ -128,6 +128,11 @@ func createMasterConfigMap(cfm *corev1.ConfigMap) {
 [etcd]
 name = "server-master-1"
 data-dir = "/tmp/df/master"`,
+		"testDemo.json": `{
+  "job-name": "test-fake-job-1",
+  "worker-count": 20,
+  "target-tick": 300
+}`,
 	}
 }
 

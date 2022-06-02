@@ -183,7 +183,7 @@ func createExecutorDeployment(de *dataflowv1.DataflowEngine, deploy *appsv1.Depl
 				InitContainers: []corev1.Container{
 					{
 						Name:  "init-master",
-						Image: "busybox",
+						Image: "busybox:1.28.3",
 						Command: []string{
 							"sh", "-c",
 							`until nslookup server-master; 
