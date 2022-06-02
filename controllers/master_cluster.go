@@ -154,7 +154,32 @@ func MasterStatefulSet(de *dataflowv1.DataflowEngine, sts *appsv1.StatefulSet) {
 // todo
 func newMasterInitContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
 
-	return nil
+	return []corev1.Container{
+		{
+			Name:  "init-mysql",
+			Image: "busybox:1.28.3",
+			Command: []string{
+				"sh", "-c",
+				`until nslookup frame-mysql-standalone; 
+do 
+	echo waiting for mysql; 
+	sleep 2; 
+done;`,
+			},
+		},
+		{
+			Name:  "init-etcd",
+			Image: "busybox:1.28.3",
+			Command: []string{
+				"sh", "-c",
+				`until nslookup user-etcd-standalone; 
+do 
+	echo waiting for etcd; 
+	sleep 2; 
+done;`,
+			},
+		},
+	}
 }
 
 func newMasterContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
@@ -187,8 +212,28 @@ func newMasterContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
 					},
 				},
 				{
-					Name:  "MASTER_SERVICE",
-					Value: "server-master",
+					Name:  "MASTER_SERVICE_NAME",
+					Value: de.Spec.Master.Name,
+				},
+				{
+					Name:  "INIT_MASTER_CLUSTER",
+					Value: loadInitClusterInfo(de),
+				},
+				{
+					Name: "MASTER_NAMESPACE",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.namespace",
+						},
+					},
+				},
+				{
+					Name: "POD_IP",
+					ValueFrom: &corev1.EnvVarSource{
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "status.podIP",
+						},
+					},
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{
@@ -205,32 +250,36 @@ func newMasterContainer(de *dataflowv1.DataflowEngine) []corev1.Container {
 	}
 }
 
-func loadMasterContainerCommand(de *dataflowv1.DataflowEngine) []string {
+func loadInitClusterInfo(de *dataflowv1.DataflowEngine) string {
 	initStr := ""
 
 	num := int(*(de.Spec.Master.Size))
 
-	// master0=http://server-master-0:8291,master1=http://server-master-1:8291,master2=http://server-master-2:8291"
-
+	// initStr += server-master-i=http://server-master-i.server-master.dev.svc.cluster.loacl:8291
 	for i := 0; i < num; i++ {
-		initStr += "server-master-" + strconv.Itoa(i) + "=" + "https://" + "server-master-" + strconv.Itoa(i)
-		initStr += "." + "server-master" + ":8291"
+		initStr += "server-master-" + strconv.Itoa(i) + "=" + "http://" + "server-master-" + strconv.Itoa(i)
+		initStr += "." + "server-master" + ".dev.svc.cluster.local" + ":8291"
 		if i == num-1 {
 			break
 		}
 		initStr += ","
 	}
 
+	return initStr
+}
+
+func loadMasterContainerCommand(de *dataflowv1.DataflowEngine) []string {
+
 	return []string{
-		"/df-master",
-		"--name", "${POD_HOSTNAME}",
-		"--config", "/mnt/config-map/master.toml",
-		"--master-addr", "0.0.0.0:10240",
-		"--advertise-addr", "${POD_HOSTNAME}.server-master:10240",
-		"--peer-urls", "http://127.0.0.1:8291",
-		"--advertise-peer-urls", "http://${POD_HOSTNAME}.server-master:8291",
-		"--initial-cluster", initStr,
-		"--frame-meta-endpoints", "frame-mysql-standalone:3306",
-		"--user-meta-endpoints", "user-etcd-standalone:2379",
+		"sh", "-c",
+		`exec /df-master --name ${POD_HOSTNAME} \
+				--config /mnt/config-map/master.toml \
+				--master-addr 0.0.0.0:10240 \
+				--advertise-addr ${POD_HOSTNAME}.${MASTER_SERVICE_NAME}:10240 \
+				--peer-urls http://${POD_IP}:8291 \
+				--advertise-peer-urls http://${POD_HOSTNAME}.${MASTER_SERVICE_NAME}.${MASTER_NAMESPACE}.svc.cluster.local:8291 \
+				--initial-cluster ${INIT_MASTER_CLUSTER} \
+				--frame-meta-endpoints frame-mysql-standalone:3306 \
+				--user-meta-endpoints user-etcd-standalone:2379`,
 	}
 }

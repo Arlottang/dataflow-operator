@@ -183,6 +183,27 @@ kubectl run mysql-client -n dev --image=mysql:5.7 -i -t --rm --restart=Never --\
     kubectl delete -f config/samples/dataflow_v1_1m3e_demo.yaml
 ```
 
+- Test for 3m3e Demo
+
+```shell
+    kubectl apply -f config/samples/dataflow_v1_3m3e_demo.yaml
+```
+
+```shell
+    watch kubectl get all -n dev
+```
+
+![](./photo/3m3e_demo.jpeg)
+
+```shell
+    kubectl describe pod <pod_name> -n dev
+    kubectl logs <pod_name> -n dev
+```
+
+```shell
+    kubectl delete -f config/samples/dataflow_v1_3m3e_demo.yaml
+```
+
 6. Verify
 
 ```shell

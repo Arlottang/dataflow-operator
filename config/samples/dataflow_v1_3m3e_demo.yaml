@@ -14,7 +14,7 @@ spec:
   image: hub.pingcap.net/ticdc/dataflow:20220531-2
   master:
     name: server-master
-    size: 1
+    size: 3
     ports: 10240
     clusterTag: true
   executor:

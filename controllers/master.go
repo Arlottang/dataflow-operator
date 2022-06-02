@@ -188,7 +188,7 @@ func createMasterDeployment(de *dataflowv1.DataflowEngine, deploy *appsv1.Deploy
 				InitContainers: []corev1.Container{
 					{
 						Name:  "init-mysql",
-						Image: "busybox",
+						Image: "busybox:1.28.3",
 						Command: []string{
 							"sh", "-c",
 							`until nslookup frame-mysql-standalone; 
@@ -200,7 +200,7 @@ done;`,
 					},
 					{
 						Name:  "init-etcd",
-						Image: "busybox",
+						Image: "busybox:1.28.3",
 						Command: []string{
 							"sh", "-c",
 							`until nslookup user-etcd-standalone; 
